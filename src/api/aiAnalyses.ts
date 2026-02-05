@@ -9,6 +9,11 @@ export function listAnalyses(params?: { jobId?: number; resumeId?: number }): Pr
   return request<AIAnalysis[]>(`/ai-analyses${qs}`)
 }
 
-export function createAnalysis(data: { jobId: number; resumeId: number; force?: boolean }): Promise<AIAnalysis> {
+export function createAnalysis(data: {
+  jobId: number
+  resumeId: number
+  force?: boolean
+  extraConditions?: string
+}): Promise<AIAnalysis> {
   return request<AIAnalysis>('/ai-analyses', { method: 'POST', body: data })
 }

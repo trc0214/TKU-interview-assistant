@@ -20,6 +20,8 @@ export function AiAnalysisPage() {
   const [analyses, setAnalyses] = useState<AIAnalysis[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [extraConditions, setExtraConditions] = useState('')
+  const [rebusy, setRebusy] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -86,6 +88,25 @@ export function AiAnalysisPage() {
       cancelled = true
     }
   }, [resumeId, numericResumeId])
+
+  async function reanalyze() {
+    if (!resume) return
+    try {
+      setRebusy(true)
+      setError(null)
+      const created = await createAnalysis({
+        jobId: resume.jobId,
+        resumeId: resume.id,
+        force: true,
+        extraConditions: extraConditions.trim() ? extraConditions.trim() : undefined,
+      })
+      setAnalysis(created)
+    } catch (e: any) {
+      setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '重新分析失敗')
+    } finally {
+      setRebusy(false)
+    }
+  }
 
   const scores = useMemo(() => {
     const overall = analysis?.overallScore ?? 0
@@ -174,6 +195,7 @@ export function AiAnalysisPage() {
           <div className="mt-1 text-sm text-slate-600">候選人：{resume.candidateName}</div>
           {error ? <div className="mt-2 text-xs text-rose-600">{error}</div> : null}
           {busy ? <div className="mt-2 text-xs text-slate-500">分析中/載入中…</div> : null}
+          {rebusy ? <div className="mt-2 text-xs text-slate-500">重新分析中…</div> : null}
         </div>
         <div className="flex gap-2">
           <Link
@@ -182,6 +204,37 @@ export function AiAnalysisPage() {
           >
             返回履歷
           </Link>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-slate-900">重新分析（可加入附加條件）</div>
+            <div className="mt-1 text-sm text-slate-600">
+              當面試官臨時增加篩選重點時，可在這裡補充，並強制 AI 重新產生分析。
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={reanalyze}
+            disabled={busy || rebusy}
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            重新分析
+          </button>
+        </div>
+
+        <div className="mt-4">
+          <label className="text-xs font-medium text-slate-700">附加條件（選填）</label>
+          <textarea
+            value={extraConditions}
+            onChange={(e) => setExtraConditions(e.target.value)}
+            rows={3}
+            placeholder="例：必須有 Docker / Kubernetes 經驗、近一年有實際帶團隊經驗、能配合每週至少 2 天到辦公室…"
+            className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+          />
+          <div className="mt-2 text-xs text-slate-500">提示：若你已修改職缺內容（必要技能/加分條件/描述），也建議按一次重新分析。</div>
         </div>
       </div>
 

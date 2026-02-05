@@ -85,6 +85,7 @@ class AIAnalysisCreate(APIModel):
   job_id: int
   resume_id: int
   force: bool = False
+  extra_conditions: str | None = None
 
 
 class AIAnalysisOut(APIModel):

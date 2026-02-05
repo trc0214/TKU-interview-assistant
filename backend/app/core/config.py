@@ -26,7 +26,7 @@ class Settings(BaseSettings):
   refresh_token_expire_days: int = 7
 
   gemini_api_key: str | None = None
-  gemini_model: str = 'gemini-1.5-flash'
+  gemini_model: str = 'gemini-2.5-flash'
   gemini_endpoint: str = 'https://generativelanguage.googleapis.com/v1beta/models'
 
   cors_origins: str = 'http://localhost:5173,http://localhost:5174'

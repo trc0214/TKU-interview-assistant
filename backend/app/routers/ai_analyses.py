@@ -53,6 +53,7 @@ async def create_analysis(data: AIAnalysisCreate, db: Session = Depends(get_db),
     required_skills=job.required_skills,
     nice_to_have=job.nice_to_have,
     resume_text=resume.resume_text,
+    extra_conditions=data.extra_conditions,
   )
 
   parsed, is_mock, model_used = await generate_analysis(prompt=prompt)
