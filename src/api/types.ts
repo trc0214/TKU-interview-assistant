@@ -81,3 +81,15 @@ export type Interview = {
   department?: string | null
   candidateName?: string | null
 }
+
+export type AuthTokens = {
+  accessToken: string
+  refreshToken?: string | null
+  tokenType?: string
+}
+
+export type User = {
+  id: number
+  username: string
+  createdAt: string
+}

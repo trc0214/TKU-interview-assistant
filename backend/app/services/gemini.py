@@ -93,9 +93,26 @@ async def generate_analysis(*, prompt: str) -> tuple[dict[str, Any], bool, str]:
   }
 
   async with httpx.AsyncClient(timeout=30) as client:
-    resp = await client.post(url, params={'key': settings.gemini_api_key}, json=payload)
-    resp.raise_for_status()
-    data = resp.json()
+    try:
+      resp = await client.post(url, params={'key': settings.gemini_api_key}, json=payload)
+      resp.raise_for_status()
+      data = resp.json()
+    except httpx.HTTPError as exc:
+      return (
+        {
+          'overall_score': 78,
+          'professional_score': 80,
+          'communication_score': 72,
+          'problem_solving_score': 76,
+          'summary': f'Gemini 呼叫失敗，故使用 Mock 分析結果（{type(exc).__name__}: {str(exc)}）。',
+          'strengths': ['具備與職缺相關的基礎能力', '履歷資訊完整度尚可'],
+          'risks': ['需以面試確認實作深度與實際貢獻'],
+          'suggested_questions': ['請分享一個最有代表性的專案與你的角色', '遇到 bug 或效能瓶頸時你的排查流程是什麼？'],
+          'disclaimer': '本分析結果僅供招募人員參考，最終決策由人類負責',
+        },
+        True,
+        settings.gemini_model,
+      )
 
   text = ''
   try:

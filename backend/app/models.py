@@ -33,6 +33,15 @@ class Job(Base):
   interviews: Mapped[list['Interview']] = relationship(back_populates='job', cascade='all, delete-orphan')
 
 
+class User(Base):
+  __tablename__ = 'users'
+
+  id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+  username: Mapped[str] = mapped_column(String(80), nullable=False, unique=True, index=True)
+  password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+  created_at: Mapped[dt.datetime] = mapped_column(DateTime, nullable=False, default=dt.datetime.utcnow)
+
+
 class Resume(Base):
   __tablename__ = 'resumes'
 

@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.db import SessionLocal, engine
 from app.models import Base
 from app.routers.ai_analyses import router as ai_router
+from app.routers.auth import router as auth_router
 from app.routers.interviews import router as interviews_router
 from app.routers.jobs import router as jobs_router
 from app.routers.resumes import router as resumes_router
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
   app.include_router(resumes_router, prefix='/api/v1')
   app.include_router(ai_router, prefix='/api/v1')
   app.include_router(interviews_router, prefix='/api/v1')
+  app.include_router(auth_router, prefix='/api/v1')
 
   @app.get('/health')
   def health():

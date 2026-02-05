@@ -130,3 +130,15 @@ def update_interview(db: Session, interview: models.Interview, data: InterviewUp
 def delete_interview(db: Session, interview: models.Interview) -> None:
   db.delete(interview)
   db.commit()
+
+
+def get_user_by_username(db: Session, username: str) -> models.User | None:
+  return db.query(models.User).filter(models.User.username == username).first()
+
+
+def create_user(db: Session, *, username: str, password_hash: str) -> models.User:
+  user = models.User(username=username, password_hash=password_hash)
+  db.add(user)
+  db.commit()
+  db.refresh(user)
+  return user

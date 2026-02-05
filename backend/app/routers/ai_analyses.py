@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app import crud, models
+from app.deps import get_current_user
 from app.db import get_db
 from app.schemas import AIAnalysisCreate, AIAnalysisOut
 from app.services.gemini import PROMPT_VERSION, build_prompt, generate_analysis
@@ -17,12 +18,13 @@ def list_analyses(
   job_id: int | None = Query(default=None),
   resume_id: int | None = Query(default=None),
   db: Session = Depends(get_db),
+  _current_user: models.User = Depends(get_current_user),
 ):
   return crud.list_analyses(db, job_id=job_id, resume_id=resume_id)
 
 
 @router.get('/{analysis_id}', response_model=AIAnalysisOut)
-def get_analysis(analysis_id: int, db: Session = Depends(get_db)):
+def get_analysis(analysis_id: int, db: Session = Depends(get_db), _current_user: models.User = Depends(get_current_user)):
   item = crud.get_analysis(db, analysis_id)
   if not item:
     raise HTTPException(status_code=404, detail='AIAnalysis not found')
@@ -30,7 +32,7 @@ def get_analysis(analysis_id: int, db: Session = Depends(get_db)):
 
 
 @router.post('', response_model=AIAnalysisOut)
-async def create_analysis(data: AIAnalysisCreate, db: Session = Depends(get_db)):
+async def create_analysis(data: AIAnalysisCreate, db: Session = Depends(get_db), _current_user: models.User = Depends(get_current_user)):
   job = crud.get_job(db, data.job_id)
   if not job:
     raise HTTPException(status_code=400, detail='Invalid job_id')

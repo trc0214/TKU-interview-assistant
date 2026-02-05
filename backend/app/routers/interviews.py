@@ -3,7 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app import crud
+from app import crud, models
+from app.deps import get_current_user
 from app.db import get_db
 from app.schemas import InterviewCreate, InterviewOut, InterviewUpdate
 
@@ -26,6 +27,7 @@ def list_interviews(
   resume_id: int | None = Query(default=None),
   status: str | None = Query(default=None),
   db: Session = Depends(get_db),
+  _current_user: models.User = Depends(get_current_user),
 ):
   items = crud.list_interviews(db, job_id=job_id, resume_id=resume_id, status=status)
   out: list[InterviewOut] = []
@@ -37,7 +39,7 @@ def list_interviews(
 
 
 @router.post('', response_model=InterviewOut)
-def create_interview(data: InterviewCreate, db: Session = Depends(get_db)):
+def create_interview(data: InterviewCreate, db: Session = Depends(get_db), _current_user: models.User = Depends(get_current_user)):
   job = crud.get_job(db, data.job_id)
   if not job:
     raise HTTPException(status_code=400, detail='Invalid job_id')
@@ -52,7 +54,7 @@ def create_interview(data: InterviewCreate, db: Session = Depends(get_db)):
 
 
 @router.get('/{interview_id}', response_model=InterviewOut)
-def get_interview(interview_id: int, db: Session = Depends(get_db)):
+def get_interview(interview_id: int, db: Session = Depends(get_db), _current_user: models.User = Depends(get_current_user)):
   item = crud.get_interview(db, interview_id)
   if not item:
     raise HTTPException(status_code=404, detail='Interview not found')
@@ -62,7 +64,7 @@ def get_interview(interview_id: int, db: Session = Depends(get_db)):
 
 
 @router.put('/{interview_id}', response_model=InterviewOut)
-def update_interview(interview_id: int, data: InterviewUpdate, db: Session = Depends(get_db)):
+def update_interview(interview_id: int, data: InterviewUpdate, db: Session = Depends(get_db), _current_user: models.User = Depends(get_current_user)):
   item = crud.get_interview(db, interview_id)
   if not item:
     raise HTTPException(status_code=404, detail='Interview not found')
@@ -73,7 +75,7 @@ def update_interview(interview_id: int, data: InterviewUpdate, db: Session = Dep
 
 
 @router.delete('/{interview_id}')
-def delete_interview(interview_id: int, db: Session = Depends(get_db)):
+def delete_interview(interview_id: int, db: Session = Depends(get_db), _current_user: models.User = Depends(get_current_user)):
   item = crud.get_interview(db, interview_id)
   if not item:
     raise HTTPException(status_code=404, detail='Interview not found')

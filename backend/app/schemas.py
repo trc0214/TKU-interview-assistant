@@ -153,3 +153,26 @@ class InterviewOut(InterviewBase):
   department: str | None = None
   candidate_name: str | None = None
   model_config = ConfigDict(from_attributes=True, populate_by_name=True, alias_generator=_to_camel)
+
+
+class AuthRegister(APIModel):
+  username: str
+  password: str
+
+
+class AuthLogin(APIModel):
+  username: str
+  password: str
+
+
+class TokenOut(APIModel):
+  access_token: str
+  refresh_token: str | None = None
+  token_type: str = 'bearer'
+
+
+class UserOut(APIModel):
+  id: int
+  username: str
+  created_at: dt.datetime
+  model_config = ConfigDict(from_attributes=True, populate_by_name=True, alias_generator=_to_camel)

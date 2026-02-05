@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app import crud
+from app import models
+from app.deps import get_current_user
 from app.db import get_db
 from app.schemas import ResumeCreate, ResumeOut
 
@@ -12,7 +14,11 @@ router = APIRouter(prefix='/resumes', tags=['resumes'])
 
 
 @router.get('', response_model=list[ResumeOut])
-def list_resumes(job_id: int | None = Query(default=None), db: Session = Depends(get_db)):
+def list_resumes(
+  job_id: int | None = Query(default=None),
+  db: Session = Depends(get_db),
+  _current_user: models.User = Depends(get_current_user),
+):
   items = crud.list_resumes(db, job_id=job_id)
   out: list[ResumeOut] = []
   for r in items:
@@ -31,7 +37,7 @@ def list_resumes(job_id: int | None = Query(default=None), db: Session = Depends
 
 
 @router.post('', response_model=ResumeOut)
-def create_resume(data: ResumeCreate, db: Session = Depends(get_db)):
+def create_resume(data: ResumeCreate, db: Session = Depends(get_db), _current_user: models.User = Depends(get_current_user)):
   job = crud.get_job(db, data.job_id)
   if not job:
     raise HTTPException(status_code=400, detail='Invalid job_id')
@@ -40,7 +46,7 @@ def create_resume(data: ResumeCreate, db: Session = Depends(get_db)):
 
 
 @router.get('/{resume_id}', response_model=ResumeOut)
-def get_resume(resume_id: int, db: Session = Depends(get_db)):
+def get_resume(resume_id: int, db: Session = Depends(get_db), _current_user: models.User = Depends(get_current_user)):
   resume = crud.get_resume(db, resume_id)
   if not resume:
     raise HTTPException(status_code=404, detail='Resume not found')
