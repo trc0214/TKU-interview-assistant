@@ -1,4 +1,5 @@
 from __future__ import annotations
+import anyio
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,8 +20,7 @@ def create_app() -> FastAPI:
 
   app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_origin_regex=r'^https?://(localhost|127\.0\.0\.1)(:\d+)?$',
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
@@ -38,9 +38,13 @@ def create_app() -> FastAPI:
 
   @app.on_event('startup')
   def on_startup():
-    Base.metadata.create_all(bind=engine)
-    with SessionLocal() as db:
-      seed_if_empty(db)
+    try:
+      print("Creating database tables...")
+      Base.metadata.create_all(bind=engine)
+      print("Database tables created successfully")
+    except Exception as e:
+      print(f"Error creating tables: {e}")
+    # NOTE: seed_if_empty 已禁用，可手動執行: python -m app.seed
 
   return app
 

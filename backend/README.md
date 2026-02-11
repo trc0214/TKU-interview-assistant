@@ -12,11 +12,11 @@ From the repo root:
 
 ```bash
 cd backend
-python -m venv .venv
+py -3.11 -m venv .venv
 ./.venv/Scripts/Activate.ps1
 pip install -r requirements.txt
 copy env.example .env
-python -m uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --port 8000
 ```
 
 API docs:
