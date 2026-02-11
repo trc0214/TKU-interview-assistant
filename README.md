@@ -1,5 +1,6 @@
 終端打
 ```bash
+$ npm install
 $ npm run dev
 ```
 應該就能執行
