@@ -1,3 +1,10 @@
+終端打
+```bash
+$ npm run dev
+```
+應該就能執行
+
+以下為預設readme
 # my-jitsi-app
 
 An Electron application with React and TypeScript
