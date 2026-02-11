@@ -6,6 +6,7 @@ const navItems = [
   { label: '履歷管理', to: '/resumes' },
   { label: '面試管理', to: '/interviews' },
   { label: 'AI 分析結果', to: '/ai-analysis' },
+  { label: '面試系統', to: '/meeting' },
   { label: '系統設定', to: '/settings' },
 ]
 
