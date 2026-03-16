@@ -39,7 +39,7 @@ export function MeetingPage() {
       <div style={{ flex: 1 }}>
         <JitsiMeeting
           domain="meet.jit.si"
-          roomName="My-Unique-Electron-Room-123"
+          roomName="uuuiiidddtku159"
           configOverwrite={{
             startWithAudioMuted: true,
             disableModeratorIndicator: true,

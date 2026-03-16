@@ -58,24 +58,25 @@ app.whenReady().then(() => {
 })
 
 function startPythonBackend() {
-  // 定義虛擬環境中 python 執行檔的路徑 (Windows 為例)
-  // 假設你把原本的 backend 資料夾放在 electron 專案根目錄
-  const backendDir = path.join(app.getAppPath(), 'backend');
-  const venvPath = path.join(backendDir, '.venv', 'Scripts', 'python.exe');
+  // 核心邏輯：根據 app.isPackaged 判斷基礎目錄
+  const backendBaseDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'backend')
+    : path.join(app.getAppPath(), 'backend')
 
-  pyProcess = spawn(venvPath, ['-m', 'uvicorn', 'app.main:app', '--port', '8000', '--workers', '1'], {
-    cwd: backendDir,
-    env: {
-      ...process.env,
-      PYTHONPATH: backendDir, // 關鍵：告訴 Python backend 是搜尋模組的根目錄
-      PYTHONIOENCODING: 'utf-8'
-    }
-  });
+  const venvPath = process.platform === 'win32'
+    ? path.join(backendBaseDir, '.venv', 'Scripts', 'python.exe')
+    : path.join(backendBaseDir, '.venv', 'bin', 'python')
 
-  pyProcess.stdout.on('data', (data) => console.log(`Python: ${data}`));
-  pyProcess.stderr.on('data', (data) => console.error(`Python Error: ${data}`));
+  console.log('啟動 Python 於:', venvPath)
+
+  const pyProcess = spawn(venvPath, ['-m', 'uvicorn', 'app.main:app', '--port', '8000'], {
+    cwd: backendBaseDir // 務必指定 cwd
+  })
+
+  pyProcess.on('error', (err) => {
+    console.error('無法啟動後端:', err)
+  })
 }
-
 // 在 app.whenReady() 呼叫
 app.whenReady().then(() => {
   startPythonBackend();

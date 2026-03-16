@@ -6,3 +6,4 @@ out
 *.log*
 backend/.venv
 backend/**/__pycache__
+backend/app.db
