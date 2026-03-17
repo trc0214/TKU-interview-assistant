@@ -1,9 +1,45 @@
-node_modules
-dist
-out
+node_modules/
+dist/
+out/
+release/
+
 .DS_Store
+Thumbs.db
+
 .eslintcache
-*.log*
-backend/.venv
-backend/**/__pycache__
-backend/app.db
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor / IDE
+.idea/
+.vscode/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/env.example
+
+# Python backend
+backend/.venv/
+backend/venv/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+
+# Local runtime data
+*.sqlite
+*.sqlite3
+*.db
+
+# Electron and build outputs
+.electron-vite/
+*.tsbuildinfo
