@@ -29,6 +29,17 @@ class Settings(BaseSettings):
   gemini_model: str = 'gemini-2.5-flash'
   gemini_endpoint: str = 'https://generativelanguage.googleapis.com/v1beta/models'
 
+  custom_model_endpoint: str | None = None
+  custom_model_api_key: str | None = None
+  custom_model_auth_header: str = 'Authorization'
+  custom_model_auth_scheme: str = 'Bearer'
+  custom_model_timeout_seconds: int = 20
+  custom_model_name: str = 'custom-interview-v1'
+
+  livekit_url: str | None = None
+  livekit_api_key: str | None = None
+  livekit_api_secret: str | None = None
+
   cors_origins: str = 'http://localhost:5173,http://localhost:5174'
 
   @property

@@ -6,11 +6,20 @@ from sqlalchemy.orm import Session
 from app import crud, models
 from app.deps import get_current_user
 from app.db import get_db
-from app.schemas import AIAnalysisCreate, AIAnalysisOut
+from app.schemas import AIAnalysisCreate, AIAnalysisHistoryOut, AIAnalysisOut, InterviewInsightOut, InterviewInsightRequest
+from app.services.custom_model import infer_interview_insight
 from app.services.gemini import PROMPT_VERSION, build_prompt, generate_analysis
 
 
 router = APIRouter(prefix='/ai-analyses', tags=['ai-analyses'])
+
+
+@router.post('/interview-insights', response_model=InterviewInsightOut)
+async def infer_interview_insights(
+  data: InterviewInsightRequest,
+  _current_user: models.User = Depends(get_current_user),
+):
+  return await infer_interview_insight(data)
 
 
 @router.get('', response_model=list[AIAnalysisOut])
@@ -21,6 +30,16 @@ def list_analyses(
   _current_user: models.User = Depends(get_current_user),
 ):
   return crud.list_analyses(db, job_id=job_id, resume_id=resume_id)
+
+
+@router.get('/history', response_model=list[AIAnalysisHistoryOut])
+def list_analysis_history(
+  job_id: int | None = Query(default=None),
+  resume_id: int | None = Query(default=None),
+  db: Session = Depends(get_db),
+  _current_user: models.User = Depends(get_current_user),
+):
+  return crud.list_analysis_history(db, job_id=job_id, resume_id=resume_id)
 
 
 @router.get('/{analysis_id}', response_model=AIAnalysisOut)
@@ -88,6 +107,8 @@ async def create_analysis(data: AIAnalysisCreate, db: Session = Depends(get_db),
   db.add(analysis)
   db.commit()
   db.refresh(analysis)
+
+  crud.create_analysis_history(db, analysis)
 
   resume.status = 'analyzed'
   db.add(resume)
