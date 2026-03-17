@@ -1,11 +1,11 @@
 import { request } from './http'
-import type { Interview } from './types'
+import type { Interview, InterviewAssistantSession, InterviewMeetingToken, InterviewTranscriptEntry } from './types'
 
 export type InterviewCreate = {
   jobId: number
   resumeId: number
   scheduledAt?: string | null
-  status?: 'scheduled' | 'completed' | 'canceled'
+  status?: 'scheduled' | 'in_progress' | 'interrupted' | 'awaiting_review' | 'completed' | 'canceled'
 
   interviewRound?: string
   interviewer?: string
@@ -42,4 +42,63 @@ export function updateInterview(interviewId: number, data: InterviewUpdate): Pro
 
 export function deleteInterview(interviewId: number): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>(`/interviews/${interviewId}`, { method: 'DELETE' })
+}
+
+export function createInterviewMeetingToken(data: {
+  interviewId?: number
+  roomName?: string
+  participantName?: string
+}): Promise<InterviewMeetingToken> {
+  return request<InterviewMeetingToken>('/interviews/meeting-token', { method: 'POST', body: data })
+}
+
+export function getLatestInterviewAssistantSession(interviewId: number): Promise<InterviewAssistantSession | null> {
+  return request<InterviewAssistantSession | null>(`/interviews/${interviewId}/assistant-session/latest`)
+}
+
+export function startInterviewAssistantSession(
+  interviewId: number,
+  data: {
+    roomName: string
+    participantIdentity: string
+    participantDisplayName?: string
+  }
+): Promise<InterviewAssistantSession> {
+  return request<InterviewAssistantSession>(`/interviews/${interviewId}/assistant-session/start`, {
+    method: 'POST',
+    body: data,
+  })
+}
+
+export function syncInterviewAssistantSession(
+  interviewId: number,
+  data: {
+    sessionId: number
+    notes?: string
+    partialText?: string
+    meetingConnected?: boolean
+    transcriptEntries?: InterviewTranscriptEntry[]
+    eventType?: string
+    eventPayload?: Record<string, unknown>
+  }
+): Promise<InterviewAssistantSession> {
+  return request<InterviewAssistantSession>(`/interviews/${interviewId}/assistant-session/sync`, {
+    method: 'POST',
+    body: data,
+  })
+}
+
+export function endInterviewAssistantSession(
+  interviewId: number,
+  data: {
+    sessionId: number
+    reason?: 'completed' | 'disconnected' | 'canceled'
+    notes?: string
+    partialText?: string
+  }
+): Promise<InterviewAssistantSession> {
+  return request<InterviewAssistantSession>(`/interviews/${interviewId}/assistant-session/end`, {
+    method: 'POST',
+    body: data,
+  })
 }

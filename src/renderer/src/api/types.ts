@@ -34,6 +34,12 @@ export type Resume = {
   analysisId?: number | null
 }
 
+export type ResumePdfParseResult = {
+  filename: string
+  extractedText: string
+  pageCount: number
+}
+
 export type AIAnalysis = {
   id: number
   jobId: number
@@ -56,7 +62,67 @@ export type AIAnalysis = {
   rawResponse: Record<string, unknown>
 }
 
-export type InterviewStatus = 'scheduled' | 'completed' | 'canceled'
+export type AIAnalysisHistory = AIAnalysis & {
+  sourceAnalysisId?: number | null
+}
+
+export type InterviewInsight = {
+  provider: string
+  model: string
+  confidence: number
+  matchingScore: number
+  communicationScore: number
+  technicalDepthScore: number
+  riskFlags: string[]
+  keySignals: string[]
+  recommendation: 'pass' | 'hold' | 'reject'
+  followUpQuestions: string[]
+  summary: string
+  usedFallback: boolean
+  rawResponse: Record<string, unknown>
+}
+
+export type InterviewMeetingToken = {
+  roomName: string
+  wsUrl: string
+  token: string
+  participantIdentity: string
+  participantDisplayName: string
+}
+
+export type InterviewTranscriptEntry = {
+  id: string
+  text: string
+  createdAt: string
+  terms: string[]
+  source: string
+  sessionId?: number | null
+}
+
+export type InterviewAssistantSession = {
+  id: number
+  interviewId: number
+  roomName: string
+  participantIdentity: string
+  participantDisplayName: string
+  status: 'active' | 'disconnected' | 'completed' | 'canceled' | string
+  meetingConnected: boolean
+  notesSnapshot: string
+  partialText: string
+  startedAt: string
+  lastSeenAt: string
+  endedAt?: string | null
+  transcriptEntries: InterviewTranscriptEntry[]
+  eventCount: number
+}
+
+export type InterviewStatus =
+  | 'scheduled'
+  | 'in_progress'
+  | 'interrupted'
+  | 'awaiting_review'
+  | 'completed'
+  | 'canceled'
 
 export type Interview = {
   id: number

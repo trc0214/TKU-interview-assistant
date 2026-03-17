@@ -1,4 +1,5 @@
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
+type RequestBody = BodyInit | Record<string, unknown> | unknown[] | null
 
 export class ApiError extends Error {
   status: number
@@ -50,19 +51,37 @@ async function parseJsonSafely(response: Response): Promise<unknown> {
   }
 }
 
-export async function request<T>(path: string, options?: { method?: HttpMethod; body?: unknown }): Promise<T> {
+export async function request<T>(
+  path: string,
+  options?: { method?: HttpMethod; body?: RequestBody; headers?: Record<string, string> },
+): Promise<T> {
   const baseUrl = getBaseUrl().replace(/\/+$/, '')
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
 
   async function doFetch(withAuth: boolean): Promise<Response> {
     const token = getAccessToken()
+    const headers: Record<string, string> = {
+      ...(options?.headers ?? {}),
+      ...(withAuth && token ? { Authorization: `Bearer ${token}` } : {}),
+    }
+
+    let body: BodyInit | undefined
+    if (options?.body !== undefined) {
+      if (options.body instanceof FormData || options.body instanceof URLSearchParams || options.body instanceof Blob) {
+        body = options.body
+      } else if (typeof options.body === 'string') {
+        body = options.body
+        if (!headers['Content-Type']) headers['Content-Type'] = 'text/plain;charset=UTF-8'
+      } else {
+        body = JSON.stringify(options.body)
+        if (!headers['Content-Type']) headers['Content-Type'] = 'application/json'
+      }
+    }
+
     return fetch(`${baseUrl}${normalizedPath}`, {
       method: options?.method ?? 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(withAuth && token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: options?.body === undefined ? undefined : JSON.stringify(options.body),
+      headers,
+      body,
     })
   }
 
