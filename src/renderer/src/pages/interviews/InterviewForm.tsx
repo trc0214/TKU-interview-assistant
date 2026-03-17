@@ -211,6 +211,9 @@ export function InterviewFormPage({ mode }: { mode: 'create' | 'edit' }) {
               className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
               <option value="scheduled">已排程</option>
+              <option value="in_progress">進行中</option>
+              <option value="interrupted">中斷待恢復</option>
+              <option value="awaiting_review">待複核</option>
               <option value="completed">已完成</option>
               <option value="canceled">已取消</option>
             </select>

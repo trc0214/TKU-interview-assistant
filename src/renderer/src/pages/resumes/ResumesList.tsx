@@ -35,7 +35,7 @@ export function ResumesListPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-xl font-semibold text-slate-900">履歷管理</div>
-          <div className="mt-1 text-sm text-slate-600">接收履歷與查看 AI 分析</div>
+          <div className="mt-1 text-sm text-slate-600">上傳 PDF、維護履歷資料與查看 AI 分析</div>
           {error ? <div className="mt-2 text-xs text-rose-600">{error}</div> : null}
         </div>
         <Link
@@ -91,10 +91,16 @@ export function ResumesListPage() {
                         查看履歷
                       </Link>
                       <Link
+                        to={`/resumes/${r.id}/edit`}
+                        className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        編輯
+                      </Link>
+                      <Link
                         to={`/ai-analysis/${r.id}`}
                         className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                       >
-                        查看 AI 分析
+                        AI 歷史比較
                       </Link>
                     </div>
                   </td>

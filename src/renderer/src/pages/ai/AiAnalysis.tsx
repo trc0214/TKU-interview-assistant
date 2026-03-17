@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Badge } from '../../components/Badge'
 import { ProgressBar } from '../../components/ProgressBar'
-import { createAnalysis, listAnalyses } from '../../api/aiAnalyses'
+import { createAnalysis, listAnalyses, listAnalysisHistory } from '../../api/aiAnalyses'
 import { getResume } from '../../api/resumes'
-import type { AIAnalysis, Resume } from '../../api/types'
+import type { AIAnalysis, AIAnalysisHistory, Resume } from '../../api/types'
 
 function scoreToTone(score: number) {
   if (score >= 85) return 'success' as const
@@ -18,6 +18,7 @@ export function AiAnalysisPage() {
   const [resume, setResume] = useState<Resume | null>(null)
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null)
   const [analyses, setAnalyses] = useState<AIAnalysis[] | null>(null)
+  const [history, setHistory] = useState<AIAnalysisHistory[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [extraConditions, setExtraConditions] = useState('')
@@ -53,6 +54,10 @@ export function AiAnalysisPage() {
         if (cancelled) return
         setResume(r)
 
+        const historyItems = await listAnalysisHistory({ resumeId: r.id })
+        if (cancelled) return
+        setHistory(historyItems)
+
         // Try to use existing latest analysis first
         const existing = await listAnalyses({ resumeId: r.id })
         if (cancelled) return
@@ -70,6 +75,7 @@ export function AiAnalysisPage() {
         setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
         setResume(null)
         setAnalysis(null)
+        setHistory([])
       } finally {
         if (!cancelled) setBusy(false)
       }
@@ -77,10 +83,12 @@ export function AiAnalysisPage() {
 
     if (resumeId) {
       setAnalyses(null)
+      setHistory([])
       loadDetail()
     } else {
       setResume(null)
       setAnalysis(null)
+      setHistory([])
       loadList()
     }
 
@@ -101,6 +109,8 @@ export function AiAnalysisPage() {
         extraConditions: extraConditions.trim() ? extraConditions.trim() : undefined,
       })
       setAnalysis(created)
+      const historyItems = await listAnalysisHistory({ resumeId: resume.id })
+      setHistory(historyItems)
     } catch (e: any) {
       setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '重新分析失敗')
     } finally {
@@ -117,6 +127,25 @@ export function AiAnalysisPage() {
       problemSolving: analysis?.problemSolvingScore ?? 0,
     }
   }, [analysis])
+
+  const comparison = useMemo(() => {
+    const latest = history[0] ?? null
+    const previous = history[1] ?? null
+    if (!latest || !previous) return null
+    return {
+      latest,
+      previous,
+      overallDelta: latest.overallScore - previous.overallScore,
+      professionalDelta: latest.professionalScore - previous.professionalScore,
+      communicationDelta: latest.communicationScore - previous.communicationScore,
+      problemSolvingDelta: latest.problemSolvingScore - previous.problemSolvingScore,
+    }
+  }, [history])
+
+  function formatDelta(value: number) {
+    if (value === 0) return '持平'
+    return `${value > 0 ? '+' : ''}${value}`
+  }
 
   if (!resumeId) {
     return (
@@ -297,6 +326,87 @@ export function AiAnalysisPage() {
         <div className="mt-4 rounded-md bg-slate-50 p-4 text-sm text-slate-700">
           本分析結果僅供招募人員參考，最終決策由人類負責。
         </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <section className="rounded-lg border border-slate-200 bg-white p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">分析歷史比較</div>
+              <div className="mt-1 text-sm text-slate-600">顯示最新一次分析與前一次分析的差異，方便確認重新分析是否真的改變判讀。</div>
+            </div>
+            <div className="text-xs text-slate-500">共 {history.length} 筆歷史</div>
+          </div>
+
+          {comparison ? (
+            <div className="mt-6 space-y-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-semibold text-slate-500">最新分析</div>
+                  <div className="mt-2 text-sm font-medium text-slate-900">{new Date(comparison.latest.createdAt).toLocaleString()}</div>
+                  <div className="mt-2 text-sm text-slate-700">{comparison.latest.summary || '無摘要'}</div>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="text-xs font-semibold text-slate-500">前一次分析</div>
+                  <div className="mt-2 text-sm font-medium text-slate-900">{new Date(comparison.previous.createdAt).toLocaleString()}</div>
+                  <div className="mt-2 text-sm text-slate-700">{comparison.previous.summary || '無摘要'}</div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
+                    <tr>
+                      <th className="px-4 py-3">指標</th>
+                      <th className="px-4 py-3">最新</th>
+                      <th className="px-4 py-3">前次</th>
+                      <th className="px-4 py-3">差異</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {[
+                      ['綜合分數', comparison.latest.overallScore, comparison.previous.overallScore, comparison.overallDelta],
+                      ['專業能力', comparison.latest.professionalScore, comparison.previous.professionalScore, comparison.professionalDelta],
+                      ['溝通能力', comparison.latest.communicationScore, comparison.previous.communicationScore, comparison.communicationDelta],
+                      ['問題解決', comparison.latest.problemSolvingScore, comparison.previous.problemSolvingScore, comparison.problemSolvingDelta],
+                    ].map(([label, latest, previous, delta]) => (
+                      <tr key={label as string}>
+                        <td className="px-4 py-3 font-medium text-slate-900">{label}</td>
+                        <td className="px-4 py-3 text-slate-700">{latest}%</td>
+                        <td className="px-4 py-3 text-slate-700">{previous}%</td>
+                        <td className={`px-4 py-3 font-medium ${Number(delta) > 0 ? 'text-emerald-600' : Number(delta) < 0 ? 'text-rose-600' : 'text-slate-600'}`}>
+                          {formatDelta(Number(delta))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 rounded-md bg-slate-50 p-4 text-sm text-slate-600">至少需要兩筆分析紀錄，才能比較新舊差異。你可以先使用上方的「重新分析」建立第二筆結果。</div>
+          )}
+        </section>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-6">
+          <div className="text-sm font-semibold text-slate-900">歷史時間軸</div>
+          <div className="mt-4 space-y-3">
+            {history.length ? (
+              history.map((item, index) => (
+                <div key={item.id} className="rounded-lg border border-slate-200 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-medium text-slate-900">{index === 0 ? '最新分析' : `歷史紀錄 ${history.length - index}`}</div>
+                    <Badge label={`${item.overallScore}%`} tone={scoreToTone(item.overallScore)} />
+                  </div>
+                  <div className="mt-2 text-xs text-slate-500">{new Date(item.createdAt).toLocaleString()}</div>
+                  <div className="mt-3 text-sm text-slate-700">{item.summary || '無摘要'}</div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-md bg-slate-50 p-4 text-sm text-slate-600">目前還沒有分析歷史。</div>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   )

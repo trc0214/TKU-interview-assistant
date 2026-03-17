@@ -5,12 +5,59 @@ import { Badge } from '../components/Badge'
 import { ProgressBar } from '../components/ProgressBar'
 import { listJobs } from '../api/jobs'
 import { listResumes } from '../api/resumes'
-import type { Job, Resume } from '../api/types'
+import { listInterviews } from '../api/interviews'
+import type { Interview, Job, Resume } from '../api/types'
 import { formatDate, formatJobStatus, formatResumeStatus } from '../utils/format'
+
+type ChartDatum = {
+  label: string
+  value: number
+  tone?: 'slate' | 'emerald' | 'amber' | 'rose'
+}
+
+function toneClass(tone: ChartDatum['tone']): string {
+  switch (tone) {
+    case 'emerald':
+      return 'bg-emerald-500'
+    case 'amber':
+      return 'bg-amber-500'
+    case 'rose':
+      return 'bg-rose-500'
+    default:
+      return 'bg-slate-700'
+  }
+}
+
+function MiniBarChart({ title, data }: { title: string; data: ChartDatum[] }) {
+  const maxValue = Math.max(...data.map((item) => item.value), 1)
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="text-sm font-semibold text-slate-900">{title}</div>
+      <div className="mt-4 space-y-3">
+        {data.map((item) => (
+          <div key={item.label} className="space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span>{item.label}</span>
+              <span className="font-medium text-slate-900">{item.value}</span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-100">
+              <div
+                className={`h-2 rounded-full ${toneClass(item.tone)}`}
+                style={{ width: `${Math.max(8, (item.value / maxValue) * 100)}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
 
 export function DashboardPage() {
   const [jobs, setJobs] = useState<Job[] | null>(null)
   const [resumes, setResumes] = useState<Resume[] | null>(null)
+  const [interviews, setInterviews] = useState<Interview[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -18,15 +65,17 @@ export function DashboardPage() {
     async function load() {
       try {
         setError(null)
-        const [jobsData, resumesData] = await Promise.all([listJobs(), listResumes()])
+        const [jobsData, resumesData, interviewsData] = await Promise.all([listJobs(), listResumes(), listInterviews()])
         if (cancelled) return
         setJobs(jobsData)
         setResumes(resumesData)
+        setInterviews(interviewsData)
       } catch (e: any) {
         if (cancelled) return
         setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
         setJobs([])
         setResumes([])
+        setInterviews([])
       }
     }
     load()
@@ -38,16 +87,67 @@ export function DashboardPage() {
   const metrics = useMemo(() => {
     const safeJobs = jobs ?? []
     const safeResumes = resumes ?? []
+    const safeInterviews = interviews ?? []
+    const scoreBuckets = {
+      low: 0,
+      medium: 0,
+      high: 0,
+      top: 0,
+    }
+
+    safeResumes.forEach((resume) => {
+      const score = resume.aiMatchScore ?? 0
+      if (score >= 90) scoreBuckets.top += 1
+      else if (score >= 75) scoreBuckets.high += 1
+      else if (score >= 60) scoreBuckets.medium += 1
+      else scoreBuckets.low += 1
+    })
+
+    const decisionCounts = {
+      pass: 0,
+      hold: 0,
+      reject: 0,
+      undecided: 0,
+    }
+
+    safeInterviews.forEach((interview) => {
+      const decision = (interview.decision || '').toLowerCase()
+      if (decision === 'pass') decisionCounts.pass += 1
+      else if (decision === 'hold') decisionCounts.hold += 1
+      else if (decision === 'reject') decisionCounts.reject += 1
+      else decisionCounts.undecided += 1
+    })
+
     return {
       openJobs: safeJobs.filter((j) => j.status === 'open').length,
       totalResumes: safeResumes.length,
       analyzedCount: safeResumes.filter((r) => r.status !== 'received').length,
+      totalInterviews: safeInterviews.length,
       recentJobs: [...safeJobs].slice(0, 3),
       recentResumes: [...safeResumes].slice(0, 5),
+      funnel: [
+        { label: '全部職缺', value: safeJobs.length, tone: 'slate' as const },
+        { label: '招募中職缺', value: safeJobs.filter((j) => j.status === 'open').length, tone: 'emerald' as const },
+        { label: '收到履歷', value: safeResumes.length, tone: 'amber' as const },
+        { label: '已安排面試', value: safeInterviews.length, tone: 'slate' as const },
+        { label: '待複核', value: safeInterviews.filter((it) => it.status === 'awaiting_review').length, tone: 'rose' as const },
+      ],
+      scoreDistribution: [
+        { label: '0-59', value: scoreBuckets.low, tone: 'rose' as const },
+        { label: '60-74', value: scoreBuckets.medium, tone: 'amber' as const },
+        { label: '75-89', value: scoreBuckets.high, tone: 'emerald' as const },
+        { label: '90-100', value: scoreBuckets.top, tone: 'slate' as const },
+      ],
+      decisionDistribution: [
+        { label: 'Pass', value: decisionCounts.pass, tone: 'emerald' as const },
+        { label: 'Hold', value: decisionCounts.hold, tone: 'amber' as const },
+        { label: 'Reject', value: decisionCounts.reject, tone: 'rose' as const },
+        { label: '未決', value: decisionCounts.undecided, tone: 'slate' as const },
+      ],
     }
-  }, [jobs, resumes])
+  }, [interviews, jobs, resumes])
 
-  const loading = jobs === null || resumes === null
+  const loading = jobs === null || resumes === null || interviews === null
 
   return (
     <div className="space-y-6">
@@ -61,6 +161,12 @@ export function DashboardPage() {
         <StatCard title="招募中職缺數量" value={loading ? '—' : `${metrics.openJobs}`} hint="目前狀態為 招募中" />
         <StatCard title="已收到履歷數量" value={loading ? '—' : `${metrics.totalResumes}`} hint="包含已分析/已面試" />
         <StatCard title="已完成 AI 初步評估人數" value={loading ? '—' : `${metrics.analyzedCount}`} hint="履歷狀態非 已收到" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <MiniBarChart title="招募流程漏斗" data={metrics.funnel} />
+        <MiniBarChart title="AI 分數分布" data={metrics.scoreDistribution} />
+        <MiniBarChart title="面試決策分布" data={metrics.decisionDistribution} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

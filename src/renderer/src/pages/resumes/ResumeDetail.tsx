@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Badge } from '../../components/Badge'
-import { getResume } from '../../api/resumes'
+import { deleteResume, getResume } from '../../api/resumes'
 import type { Resume } from '../../api/types'
 import { formatResumeStatus } from '../../utils/format'
 
 export function ResumeDetailPage() {
+  const navigate = useNavigate()
   const { resumeId } = useParams()
   const numericId = Number(resumeId)
   const [resume, setResume] = useState<Resume | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -57,12 +59,42 @@ export function ResumeDetailPage() {
           <div className="text-xl font-semibold text-slate-900">履歷詳情</div>
           <div className="mt-1 text-sm text-slate-600">{resume.candidateName} / {resume.appliedJobTitle}</div>
         </div>
-        <Link
-          to="/resumes"
-          className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          返回列表
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to={`/resumes/${resume.id}/edit`}
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            編輯履歷
+          </Link>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={() => {
+              if (!window.confirm(`確定要刪除 ${resume.candidateName} 的履歷嗎？此操作會一併移除相關分析與面試紀錄。`)) return
+              ;(async () => {
+                try {
+                  setDeleting(true)
+                  setError(null)
+                  await deleteResume(resume.id)
+                  navigate('/resumes')
+                } catch (e: any) {
+                  setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '刪除失敗')
+                } finally {
+                  setDeleting(false)
+                }
+              })()
+            }}
+            className="rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {deleting ? '刪除中…' : '刪除履歷'}
+          </button>
+          <Link
+            to="/resumes"
+            className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            返回列表
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -127,7 +159,7 @@ export function ResumeDetailPage() {
               to={`/ai-analysis/${resume.id}`}
               className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
             >
-              前往 AI 面試分析
+              前往 AI 分析與歷史比較
             </Link>
           </div>
         </section>

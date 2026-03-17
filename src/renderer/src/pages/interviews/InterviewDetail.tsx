@@ -8,6 +8,12 @@ function statusLabel(status: Interview['status']) {
   switch (status) {
     case 'scheduled':
       return '已排程'
+    case 'in_progress':
+      return '進行中'
+    case 'interrupted':
+      return '中斷待恢復'
+    case 'awaiting_review':
+      return '待複核'
     case 'completed':
       return '已完成'
     case 'canceled':
@@ -21,6 +27,12 @@ function statusTone(status: Interview['status']) {
   switch (status) {
     case 'scheduled':
       return 'info' as const
+    case 'in_progress':
+      return 'warning' as const
+    case 'interrupted':
+      return 'danger' as const
+    case 'awaiting_review':
+      return 'warning' as const
     case 'completed':
       return 'success' as const
     case 'canceled':
@@ -87,6 +99,12 @@ export function InterviewDetailPage() {
           {error ? <div className="mt-2 text-xs text-rose-600">{error}</div> : null}
         </div>
         <div className="flex gap-2">
+          <Link
+            to={`/meeting?interviewId=${item.id}`}
+            className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            線上面試
+          </Link>
           <Link
             to={`/interviews/${item.id}/edit`}
             className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
