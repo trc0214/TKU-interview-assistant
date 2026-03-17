@@ -1,7 +1,7 @@
 {
-  "name": "my-jitsi-app",
+  "name": "ai-interview-assistant",
   "version": "1.0.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "AI interview assistant and resume management system built with Electron, React, FastAPI, and LiveKit",
   "main": "./out/main/index.js",
   "author": "example.com",
   "homepage": "https://electron-vite.org",
@@ -21,10 +21,12 @@
     "build:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
+    "@livekit/components-react": "^2.9.15",
+    "@livekit/components-styles": "^1.1.6",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
-    "@jitsi/react-sdk": "^1.4.4",
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "livekit-client": "^2.15.7"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

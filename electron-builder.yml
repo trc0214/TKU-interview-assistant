@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: my-jitsi-app
+appId: com.tku.aiinterviewassistant
+productName: AI Interview Assistant
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: my-jitsi-app
+  executableName: ai-interview-assistant
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

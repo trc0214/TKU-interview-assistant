@@ -41,8 +41,9 @@ export default function App() {
             <Route path="/jobs/:jobId/edit" element={<JobFormPage mode="edit" />} />
 
             <Route path="/resumes" element={<ResumesListPage />} />
-            <Route path="/resumes/new" element={<ResumeFormPage />} />
+            <Route path="/resumes/new" element={<ResumeFormPage mode="create" />} />
             <Route path="/resumes/:resumeId" element={<ResumeDetailPage />} />
+            <Route path="/resumes/:resumeId/edit" element={<ResumeFormPage mode="edit" />} />
 
             <Route path="/interviews" element={<InterviewsListPage />} />
             <Route path="/interviews/new" element={<InterviewFormPage mode="create" />} />
