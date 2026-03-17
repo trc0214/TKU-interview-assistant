@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app import crud
 from app import models
 from app.deps import get_current_user
 from app.db import get_db
-from app.schemas import ResumeCreate, ResumeOut
+from app.schemas import ResumeCreate, ResumeOut, ResumePdfParseOut, ResumeUpdate
+from app.services.resume_parser import parse_resume_pdf
 
 
 router = APIRouter(prefix='/resumes', tags=['resumes'])
@@ -60,3 +61,52 @@ def get_resume(resume_id: int, db: Session = Depends(get_db), _current_user: mod
     match_highlights=(list(latest.strengths)[:5] if latest and latest.strengths else []),
     analysis_id=(latest.id if latest else None),
   )
+
+
+@router.post('/parse-pdf', response_model=ResumePdfParseOut)
+async def parse_resume_pdf_file(
+  file: UploadFile = File(...),
+  _current_user: models.User = Depends(get_current_user),
+):
+  return await parse_resume_pdf(file)
+
+
+@router.put('/{resume_id}', response_model=ResumeOut)
+def update_resume(
+  resume_id: int,
+  data: ResumeUpdate,
+  db: Session = Depends(get_db),
+  _current_user: models.User = Depends(get_current_user),
+):
+  resume = crud.get_resume(db, resume_id)
+  if not resume:
+    raise HTTPException(status_code=404, detail='Resume not found')
+
+  next_job_id = data.job_id if data.job_id is not None else resume.job_id
+  job = crud.get_job(db, next_job_id)
+  if not job:
+    raise HTTPException(status_code=400, detail='Invalid job_id')
+
+  updated = crud.update_resume(db, resume, data)
+  latest = crud.get_latest_analysis_for_resume(db, updated.id)
+  return ResumeOut(
+    **updated.__dict__,
+    applied_job_title=job.title,
+    ai_match_score=(latest.overall_score if latest else None),
+    ai_summary=(latest.summary if latest else None),
+    match_highlights=(list(latest.strengths)[:5] if latest and latest.strengths else []),
+    analysis_id=(latest.id if latest else None),
+  )
+
+
+@router.delete('/{resume_id}')
+def delete_resume(
+  resume_id: int,
+  db: Session = Depends(get_db),
+  _current_user: models.User = Depends(get_current_user),
+):
+  resume = crud.get_resume(db, resume_id)
+  if not resume:
+    raise HTTPException(status_code=404, detail='Resume not found')
+  crud.delete_resume(db, resume)
+  return {'ok': True}

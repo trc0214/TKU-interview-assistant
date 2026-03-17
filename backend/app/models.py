@@ -59,6 +59,7 @@ class Resume(Base):
 
   job: Mapped['Job'] = relationship(back_populates='resumes')
   analyses: Mapped[list['AIAnalysis']] = relationship(back_populates='resume', cascade='all, delete-orphan')
+  analysis_history: Mapped[list['AIAnalysisHistory']] = relationship(back_populates='resume', cascade='all, delete-orphan')
   interviews: Mapped[list['Interview']] = relationship(back_populates='resume', cascade='all, delete-orphan')
 
 
@@ -90,6 +91,34 @@ class AIAnalysis(Base):
   resume: Mapped['Resume'] = relationship(back_populates='analyses')
 
 
+class AIAnalysisHistory(Base):
+  __tablename__ = 'ai_analysis_history'
+
+  id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+  job_id: Mapped[int] = mapped_column(ForeignKey('jobs.id', ondelete='CASCADE'), nullable=False)
+  resume_id: Mapped[int] = mapped_column(ForeignKey('resumes.id', ondelete='CASCADE'), nullable=False)
+  source_analysis_id: Mapped[int | None] = mapped_column(ForeignKey('ai_analyses.id', ondelete='SET NULL'), nullable=True)
+
+  created_at: Mapped[dt.datetime] = mapped_column(DateTime, nullable=False, default=dt.datetime.utcnow)
+  model: Mapped[str] = mapped_column(String(80), nullable=False, default='gemini-1.5-flash')
+  prompt_version: Mapped[str] = mapped_column(String(40), nullable=False, default='v1')
+
+  overall_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+  professional_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+  communication_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+  problem_solving_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+  summary: Mapped[str] = mapped_column(Text, nullable=False, default='')
+  strengths: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+  risks: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+  suggested_questions: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+
+  raw_response: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+  is_mock: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+  resume: Mapped['Resume'] = relationship(back_populates='analysis_history')
+
+
 class Interview(Base):
   __tablename__ = 'interviews'
 
@@ -115,3 +144,60 @@ class Interview(Base):
 
   job: Mapped['Job'] = relationship(back_populates='interviews')
   resume: Mapped['Resume'] = relationship(back_populates='interviews')
+  assistant_sessions: Mapped[list['InterviewAssistantSession']] = relationship(back_populates='interview', cascade='all, delete-orphan')
+  transcript_entries: Mapped[list['InterviewTranscriptEntry']] = relationship(back_populates='interview', cascade='all, delete-orphan')
+  meeting_events: Mapped[list['InterviewMeetingEvent']] = relationship(back_populates='interview', cascade='all, delete-orphan')
+
+
+class InterviewAssistantSession(Base):
+  __tablename__ = 'interview_assistant_sessions'
+
+  id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+  interview_id: Mapped[int] = mapped_column(ForeignKey('interviews.id', ondelete='CASCADE'), nullable=False, index=True)
+  room_name: Mapped[str] = mapped_column(String(160), nullable=False, default='')
+  participant_identity: Mapped[str] = mapped_column(String(160), nullable=False, default='')
+  participant_display_name: Mapped[str] = mapped_column(String(160), nullable=False, default='')
+  status: Mapped[str] = mapped_column(String(30), nullable=False, default='active')
+  meeting_connected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+  notes_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default='')
+  partial_text: Mapped[str] = mapped_column(Text, nullable=False, default='')
+  started_at: Mapped[dt.datetime] = mapped_column(DateTime, nullable=False, default=dt.datetime.utcnow)
+  last_seen_at: Mapped[dt.datetime] = mapped_column(DateTime, nullable=False, default=dt.datetime.utcnow)
+  ended_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+  created_at: Mapped[dt.datetime] = mapped_column(DateTime, nullable=False, default=dt.datetime.utcnow)
+  updated_at: Mapped[dt.datetime] = mapped_column(DateTime, nullable=False, default=dt.datetime.utcnow)
+
+  interview: Mapped['Interview'] = relationship(back_populates='assistant_sessions')
+  transcript_entries: Mapped[list['InterviewTranscriptEntry']] = relationship(back_populates='session', cascade='all, delete-orphan')
+  meeting_events: Mapped[list['InterviewMeetingEvent']] = relationship(back_populates='session', cascade='all, delete-orphan')
+
+
+class InterviewTranscriptEntry(Base):
+  __tablename__ = 'interview_transcript_entries'
+  __table_args__ = (UniqueConstraint('interview_id', 'entry_id', name='uq_interview_transcript_entry'),)
+
+  id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+  interview_id: Mapped[int] = mapped_column(ForeignKey('interviews.id', ondelete='CASCADE'), nullable=False, index=True)
+  session_id: Mapped[int | None] = mapped_column(ForeignKey('interview_assistant_sessions.id', ondelete='SET NULL'), nullable=True, index=True)
+  entry_id: Mapped[str] = mapped_column(String(120), nullable=False)
+  text: Mapped[str] = mapped_column(Text, nullable=False, default='')
+  terms: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+  source: Mapped[str] = mapped_column(String(30), nullable=False, default='speech')
+  created_at: Mapped[dt.datetime] = mapped_column(DateTime, nullable=False, default=dt.datetime.utcnow)
+
+  interview: Mapped['Interview'] = relationship(back_populates='transcript_entries')
+  session: Mapped['InterviewAssistantSession | None'] = relationship(back_populates='transcript_entries')
+
+
+class InterviewMeetingEvent(Base):
+  __tablename__ = 'interview_meeting_events'
+
+  id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+  interview_id: Mapped[int] = mapped_column(ForeignKey('interviews.id', ondelete='CASCADE'), nullable=False, index=True)
+  session_id: Mapped[int | None] = mapped_column(ForeignKey('interview_assistant_sessions.id', ondelete='SET NULL'), nullable=True, index=True)
+  event_type: Mapped[str] = mapped_column(String(60), nullable=False, default='session_sync')
+  payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+  created_at: Mapped[dt.datetime] = mapped_column(DateTime, nullable=False, default=dt.datetime.utcnow)
+
+  interview: Mapped['Interview'] = relationship(back_populates='meeting_events')
+  session: Mapped['InterviewAssistantSession | None'] = relationship(back_populates='meeting_events')

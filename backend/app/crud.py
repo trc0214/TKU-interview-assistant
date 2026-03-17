@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+import datetime as dt
+
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import models
-from app.schemas import AIAnalysisOut, InterviewCreate, InterviewUpdate, JobCreate, JobUpdate, ResumeCreate
+from app.schemas import InterviewAssistantSessionEnd, InterviewAssistantSessionStart, InterviewAssistantSessionSync, InterviewCreate, InterviewUpdate, JobCreate, JobUpdate, ResumeCreate, ResumeUpdate
 
 
 def list_jobs(db: Session) -> list[models.Job]:
@@ -57,6 +59,21 @@ def create_resume(db: Session, data: ResumeCreate) -> models.Resume:
   return resume
 
 
+def update_resume(db: Session, resume: models.Resume, data: ResumeUpdate) -> models.Resume:
+  patch = data.model_dump(exclude_unset=True)
+  for key, value in patch.items():
+    setattr(resume, key, value)
+  db.add(resume)
+  db.commit()
+  db.refresh(resume)
+  return resume
+
+
+def delete_resume(db: Session, resume: models.Resume) -> None:
+  db.delete(resume)
+  db.commit()
+
+
 def get_analysis_by_pair(db: Session, job_id: int, resume_id: int) -> models.AIAnalysis | None:
   stmt = select(models.AIAnalysis).where(models.AIAnalysis.job_id == job_id, models.AIAnalysis.resume_id == resume_id)
   return db.scalars(stmt).first()
@@ -83,6 +100,39 @@ def list_analyses(db: Session, job_id: int | None = None, resume_id: int | None 
   if resume_id is not None:
     stmt = stmt.where(models.AIAnalysis.resume_id == resume_id)
   return list(db.scalars(stmt))
+
+
+def list_analysis_history(db: Session, job_id: int | None = None, resume_id: int | None = None) -> list[models.AIAnalysisHistory]:
+  stmt = select(models.AIAnalysisHistory).order_by(models.AIAnalysisHistory.created_at.desc())
+  if job_id is not None:
+    stmt = stmt.where(models.AIAnalysisHistory.job_id == job_id)
+  if resume_id is not None:
+    stmt = stmt.where(models.AIAnalysisHistory.resume_id == resume_id)
+  return list(db.scalars(stmt))
+
+
+def create_analysis_history(db: Session, analysis: models.AIAnalysis) -> models.AIAnalysisHistory:
+  history = models.AIAnalysisHistory(
+    job_id=analysis.job_id,
+    resume_id=analysis.resume_id,
+    source_analysis_id=analysis.id,
+    model=analysis.model,
+    prompt_version=analysis.prompt_version,
+    overall_score=analysis.overall_score,
+    professional_score=analysis.professional_score,
+    communication_score=analysis.communication_score,
+    problem_solving_score=analysis.problem_solving_score,
+    summary=analysis.summary,
+    strengths=list(analysis.strengths or []),
+    risks=list(analysis.risks or []),
+    suggested_questions=list(analysis.suggested_questions or []),
+    raw_response=dict(analysis.raw_response or {}),
+    is_mock=analysis.is_mock,
+  )
+  db.add(history)
+  db.commit()
+  db.refresh(history)
+  return history
 
 
 def list_interviews(
@@ -117,9 +167,6 @@ def update_interview(db: Session, interview: models.Interview, data: InterviewUp
   patch = data.model_dump(exclude_unset=True)
   for k, v in patch.items():
     setattr(interview, k, v)
-  # manual updated_at
-  import datetime as dt
-
   interview.updated_at = dt.datetime.utcnow()
   db.add(interview)
   db.commit()
@@ -142,3 +189,165 @@ def create_user(db: Session, *, username: str, password_hash: str) -> models.Use
   db.commit()
   db.refresh(user)
   return user
+
+
+def get_latest_interview_assistant_session(db: Session, interview_id: int) -> models.InterviewAssistantSession | None:
+  stmt = (
+    select(models.InterviewAssistantSession)
+    .where(models.InterviewAssistantSession.interview_id == interview_id)
+    .order_by(models.InterviewAssistantSession.started_at.desc())
+    .limit(1)
+  )
+  return db.scalars(stmt).first()
+
+
+def get_interview_assistant_session(db: Session, session_id: int) -> models.InterviewAssistantSession | None:
+  return db.get(models.InterviewAssistantSession, session_id)
+
+
+def list_transcript_entries_for_session(db: Session, session_id: int) -> list[models.InterviewTranscriptEntry]:
+  stmt = (
+    select(models.InterviewTranscriptEntry)
+    .where(models.InterviewTranscriptEntry.session_id == session_id)
+    .order_by(models.InterviewTranscriptEntry.created_at.asc())
+  )
+  return list(db.scalars(stmt))
+
+
+def count_meeting_events_for_session(db: Session, session_id: int) -> int:
+  stmt = select(func.count(models.InterviewMeetingEvent.id)).where(models.InterviewMeetingEvent.session_id == session_id)
+  return int(db.scalar(stmt) or 0)
+
+
+def create_meeting_event(
+  db: Session,
+  *,
+  interview_id: int,
+  session_id: int | None,
+  event_type: str,
+  payload: dict,
+) -> models.InterviewMeetingEvent:
+  event = models.InterviewMeetingEvent(
+    interview_id=interview_id,
+    session_id=session_id,
+    event_type=event_type,
+    payload=payload,
+  )
+  db.add(event)
+  db.commit()
+  db.refresh(event)
+  return event
+
+
+def create_interview_assistant_session(
+  db: Session,
+  *,
+  interview: models.Interview,
+  data: InterviewAssistantSessionStart,
+) -> models.InterviewAssistantSession:
+  now = dt.datetime.utcnow()
+  session = models.InterviewAssistantSession(
+    interview_id=interview.id,
+    room_name=data.room_name,
+    participant_identity=data.participant_identity,
+    participant_display_name=data.participant_display_name,
+    status='active',
+    meeting_connected=False,
+    started_at=now,
+    last_seen_at=now,
+    updated_at=now,
+  )
+  interview.status = 'in_progress'
+  interview.updated_at = now
+  db.add(session)
+  db.add(interview)
+  db.commit()
+  db.refresh(session)
+  return session
+
+
+def sync_interview_assistant_session(
+  db: Session,
+  *,
+  interview: models.Interview,
+  session: models.InterviewAssistantSession,
+  data: InterviewAssistantSessionSync,
+) -> models.InterviewAssistantSession:
+  now = dt.datetime.utcnow()
+  session.notes_snapshot = data.notes
+  session.partial_text = data.partial_text
+  session.last_seen_at = now
+  session.updated_at = now
+  if data.meeting_connected is not None:
+    session.meeting_connected = data.meeting_connected
+    if data.meeting_connected:
+      session.status = 'active'
+      interview.status = 'in_progress'
+
+  if data.notes.strip():
+    interview.notes = data.notes
+  interview.updated_at = now
+
+  existing_ids = set(
+    db.scalars(
+      select(models.InterviewTranscriptEntry.entry_id).where(models.InterviewTranscriptEntry.interview_id == interview.id)
+    )
+  )
+
+  for entry in data.transcript_entries:
+    if entry.id in existing_ids:
+      continue
+    db.add(
+      models.InterviewTranscriptEntry(
+        interview_id=interview.id,
+        session_id=session.id,
+        entry_id=entry.id,
+        text=entry.text,
+        terms=list(entry.terms or []),
+        source=entry.source,
+        created_at=entry.created_at,
+      )
+    )
+    existing_ids.add(entry.id)
+
+  db.add(session)
+  db.add(interview)
+  db.commit()
+  db.refresh(session)
+  return session
+
+
+def end_interview_assistant_session(
+  db: Session,
+  *,
+  interview: models.Interview,
+  session: models.InterviewAssistantSession,
+  data: InterviewAssistantSessionEnd,
+) -> models.InterviewAssistantSession:
+  now = dt.datetime.utcnow()
+  session.notes_snapshot = data.notes
+  session.partial_text = data.partial_text
+  session.meeting_connected = False
+  session.last_seen_at = now
+  session.ended_at = now
+  session.updated_at = now
+
+  if data.reason == 'completed':
+    session.status = 'completed'
+    interview.status = 'awaiting_review'
+  elif data.reason == 'canceled':
+    session.status = 'canceled'
+    interview.status = 'canceled'
+  else:
+    session.status = 'disconnected'
+    interview.status = 'interrupted'
+
+  if data.notes.strip():
+    interview.notes = data.notes
+  interview.updated_at = now
+
+  db.add(session)
+  db.add(interview)
+  db.commit()
+  db.refresh(session)
+  return session
