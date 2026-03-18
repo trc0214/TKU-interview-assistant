@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import '@livekit/components-styles'
 import { LiveKitRoom, RoomAudioRenderer, VideoConference } from '@livekit/components-react'
 
@@ -10,7 +11,7 @@ type LiveKitMeetingPanelProps = {
   onError?: (error: Error) => void
 }
 
-export function LiveKitMeetingPanel({
+function LiveKitMeetingPanelBase({
   token,
   serverUrl,
   connect,
@@ -38,3 +39,11 @@ export function LiveKitMeetingPanel({
     </div>
   )
 }
+
+export const LiveKitMeetingPanel = memo(
+  LiveKitMeetingPanelBase,
+  (prevProps, nextProps) =>
+    prevProps.token === nextProps.token &&
+    prevProps.serverUrl === nextProps.serverUrl &&
+    prevProps.connect === nextProps.connect,
+)

@@ -35,6 +35,26 @@ function toSnapshotFromServer(session: InterviewAssistantSession): InterviewAssi
   }
 }
 
+function isLiveKitDnsTurnFailure(message: string): boolean {
+  const normalizedMessage = message.toLowerCase()
+
+  return (
+    normalizedMessage.includes('failed to resolve address') ||
+    normalizedMessage.includes('host.livekit.cloud') ||
+    normalizedMessage.includes('errorcode: -105') ||
+    normalizedMessage.includes('onsizereceived failed with error: -2') ||
+    normalizedMessage.includes('could not establish pc connection') ||
+    (normalizedMessage.includes('ice') && normalizedMessage.includes('failed'))
+  )
+}
+
+function getMeetingDiagnosticHint(message: string | null): string | null {
+  if (!message) return null
+  if (!isLiveKitDnsTurnFailure(message)) return null
+
+  return '偵測到 LiveKit TURN / DNS 連線異常。請檢查 VPN、防火牆與 DNS 設定，並確認網路允許 *.livekit.cloud 與 *.host.livekit.cloud 的連線。'
+}
+
 export function MeetingPage(): ReactElement {
   const [searchParams] = useSearchParams()
   const interviewIdParam = Number(searchParams.get('interviewId'))
@@ -175,6 +195,8 @@ export function MeetingPage(): ReactElement {
 
     return `${hours}:${minutes}:${seconds}`
   }, [assistant.startedAt, timerTick])
+
+  const meetingDiagnosticHint = useMemo(() => getMeetingDiagnosticHint(meetingError), [meetingError])
 
   const showRecoveryPrompt = !dismissedRecovery && !assistant.hasSessionContent && Boolean(recoverableServerSession || recoverableLocalDraft)
 
@@ -507,6 +529,11 @@ export function MeetingPage(): ReactElement {
             <div className="flex min-h-[480px] flex-col items-center justify-center gap-4 rounded-md border border-dashed border-slate-200 bg-slate-50 p-4">
               <p className="text-sm text-slate-600">準備進入線上會議</p>
               {meetingError ? <p className="text-xs text-rose-600">{meetingError}</p> : null}
+              {meetingDiagnosticHint ? (
+                <p className="max-w-[560px] rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {meetingDiagnosticHint}
+                </p>
+              ) : null}
 
               <button
                 type="button"
@@ -534,6 +561,11 @@ export function MeetingPage(): ReactElement {
                   結束並離開會議
                 </button>
               </div>
+              {meetingDiagnosticHint ? (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {meetingDiagnosticHint}
+                </p>
+              ) : null}
 
               <LiveKitMeetingPanel
                 token={meetingToken}
@@ -584,6 +616,10 @@ export function MeetingPage(): ReactElement {
             {assistantSession ? (
               <p className="mt-1 text-xs text-slate-500">Session #{assistantSession.id} / Events {assistantSession.eventCount}</p>
             ) : null}
+            <p className="mt-1 text-xs text-slate-500">
+              語音辨識方案：{assistant.recognitionProvider}
+              {assistant.recognitionUsedFallback ? '（fallback）' : ''}
+            </p>
 
             <div className="mt-3 flex flex-wrap gap-2">
               <button
