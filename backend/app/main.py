@@ -12,6 +12,7 @@ from app.routers.auth import router as auth_router
 from app.routers.interviews import router as interviews_router
 from app.routers.jobs import router as jobs_router
 from app.routers.resumes import router as resumes_router
+from app.routers.speech import router as speech_router
 from app.seed import seed_if_empty
 
 
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
   app.include_router(ai_router, prefix='/api/v1')
   app.include_router(interviews_router, prefix='/api/v1')
   app.include_router(auth_router, prefix='/api/v1')
+  app.include_router(speech_router, prefix='/api/v1')
 
   @app.get('/health')
   def health():

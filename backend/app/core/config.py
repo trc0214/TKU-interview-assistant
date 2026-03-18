@@ -40,6 +40,16 @@ class Settings(BaseSettings):
   livekit_api_key: str | None = None
   livekit_api_secret: str | None = None
 
+  # Azure Speech-to-Text settings
+  azure_speech_key: str | None = None
+  azure_speech_region: str | None = None
+  azure_speech_language: str = 'zh-TW'
+
+  # Whisper fallback settings
+  whisper_model: str = 'base'
+  whisper_device: str = 'cpu'
+  whisper_use_fallback: bool = True
+
   cors_origins: str = 'http://localhost:5173,http://localhost:5174'
 
   @property
