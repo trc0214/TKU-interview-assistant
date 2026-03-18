@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { request } from '../../api/http'
 import { clearDraft, loadDraft, saveDraft } from './storage'
 import {
   buildInterviewNotes,
@@ -7,40 +8,49 @@ import {
   type TranscriptEntry
 } from './transcript'
 
-type SpeechRecognitionAlternativeLike = {
-  transcript: string
+const AUDIO_QUALITY_POLL_MS = 180
+const RECORDER_TIMESLICE_MS = 1000
+const SILENCE_RELEASE_MS = 900
+const MIN_CHUNK_BYTES = 4096
+const SPEECH_RMS_THRESHOLD = 0.02
+const NOISE_RMS_THRESHOLD = 0.03
+const LOW_VOLUME_RMS_THRESHOLD = 0.01
+
+type AudioIssue = 'low-volume' | 'high-noise' | 'clipping' | null
+
+type SpeechTranscribeResponse = {
+  text: string
+  language: string
+  confidence: number
+  provider: string
+  used_fallback: boolean
+  error?: string | null
 }
 
-type SpeechRecognitionResultLike = {
-  isFinal: boolean
-  0: SpeechRecognitionAlternativeLike
+function supportsBackendTranscription(): boolean {
+  return Boolean(
+    typeof window !== 'undefined' &&
+      navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === 'function' &&
+      typeof window.MediaRecorder !== 'undefined',
+  )
 }
 
-type SpeechRecognitionEventLike = {
-  resultIndex: number
-  results: SpeechRecognitionResultLike[]
-}
+function resolveRecorderMimeType(): string | undefined {
+  const preferredTypes = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+  ]
 
-type SpeechRecognitionLike = {
-  continuous: boolean
-  interimResults: boolean
-  lang: string
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null
-  onerror: ((event: { error?: string }) => void) | null
-  onend: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
-
-function resolveSpeechRecognition(): SpeechRecognitionConstructor | null {
-  const maybeWindow = window as Window & {
-    SpeechRecognition?: SpeechRecognitionConstructor
-    webkitSpeechRecognition?: SpeechRecognitionConstructor
+  for (const mimeType of preferredTypes) {
+    if (window.MediaRecorder.isTypeSupported(mimeType)) {
+      return mimeType
+    }
   }
 
-  return maybeWindow.SpeechRecognition ?? maybeWindow.webkitSpeechRecognition ?? null
+  return undefined
 }
 
 type InitParams = {
@@ -62,6 +72,8 @@ type InterviewAssistantApi = {
   isListening: boolean
   isOnline: boolean
   error: string | null
+  recognitionProvider: string
+  recognitionUsedFallback: boolean
   notes: string
   partialText: string
   transcriptEntries: TranscriptEntry[]
@@ -85,18 +97,160 @@ export function useInterviewAssistant({
   interviewer,
   candidateName
 }: InitParams): InterviewAssistantApi {
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const analysisTimerRef = useRef<number | null>(null)
+  const isStoppingRef = useRef(false)
+  const activeSessionRef = useRef(0)
+  const initializationChunkRef = useRef<Blob | null>(null)
+  const preRollChunkRef = useRef<Blob | null>(null)
+  const uploadQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const noSpeechChunkCountRef = useRef(0)
+  const speechLikelyRef = useRef(false)
+  const recentSpeechMsRef = useRef(0)
+  const lowVolumeMsRef = useRef(0)
+  const highNoiseMsRef = useRef(0)
+  const clippingMsRef = useRef(0)
+  const lastAudioIssueRef = useRef<AudioIssue>(null)
   const autoSaveIdRef = useRef<number | null>(null)
 
-  const [isSupported] = useState(() => !!resolveSpeechRecognition())
+  const [isSupported] = useState(() => supportsBackendTranscription())
   const [isListening, setIsListening] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [recognitionProvider, setRecognitionProvider] = useState('backend')
+  const [recognitionUsedFallback, setRecognitionUsedFallback] = useState(false)
   const [partialText, setPartialText] = useState('')
   const [notes, setNotes] = useState('')
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([])
   const [isOnline, setIsOnline] = useState(() => window.navigator.onLine)
   const [updatedAt, setUpdatedAt] = useState(() => Date.now())
+
+  const computeRmsAndPeak = (timeDomain: Uint8Array): { rms: number; peak: number } => {
+    if (!timeDomain.length) {
+      return { rms: 0, peak: 0 }
+    }
+
+    let sum = 0
+    let peak = 0
+    for (let index = 0; index < timeDomain.length; index += 1) {
+      const normalized = (timeDomain[index] - 128) / 128
+      const absolute = Math.abs(normalized)
+      sum += normalized * normalized
+      if (absolute > peak) {
+        peak = absolute
+      }
+    }
+
+    return {
+      rms: Math.sqrt(sum / timeDomain.length),
+      peak,
+    }
+  }
+
+  const resolveIssueMessage = (issue: AudioIssue): string | null => {
+    if (issue === 'low-volume') {
+      return '目前音量偏低，請靠近麥克風。'
+    }
+    if (issue === 'high-noise') {
+      return '背景噪音偏高，請先降低環境噪音。'
+    }
+    if (issue === 'clipping') {
+      return '輸入音量過高造成失真，請稍微遠離麥克風。'
+    }
+    return null
+  }
+
+  const stopAudioAnalysis = useCallback(() => {
+    if (analysisTimerRef.current) {
+      window.clearInterval(analysisTimerRef.current)
+      analysisTimerRef.current = null
+    }
+
+    if (audioContextRef.current) {
+      void audioContextRef.current.close().catch(() => {
+        // ignore context close failures
+      })
+      audioContextRef.current = null
+    }
+
+    analyserRef.current = null
+    speechLikelyRef.current = false
+    recentSpeechMsRef.current = 0
+    lowVolumeMsRef.current = 0
+    highNoiseMsRef.current = 0
+    clippingMsRef.current = 0
+    lastAudioIssueRef.current = null
+  }, [])
+
+  const startAudioAnalysis = useCallback((stream: MediaStream) => {
+    const AudioContextCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AudioContextCtor) {
+      return
+    }
+
+    try {
+      const context = new AudioContextCtor()
+      const source = context.createMediaStreamSource(stream)
+      const analyser = context.createAnalyser()
+      analyser.fftSize = 2048
+      analyser.smoothingTimeConstant = 0.65
+      source.connect(analyser)
+
+      audioContextRef.current = context
+      analyserRef.current = analyser
+
+      const bucket = new Uint8Array(analyser.frequencyBinCount)
+      analysisTimerRef.current = window.setInterval(() => {
+        if (!analyserRef.current) {
+          return
+        }
+
+        analyserRef.current.getByteTimeDomainData(bucket)
+        const { rms, peak } = computeRmsAndPeak(bucket)
+        const hasSpeech = rms >= SPEECH_RMS_THRESHOLD || (peak >= 0.08 && rms >= LOW_VOLUME_RMS_THRESHOLD * 1.5)
+        speechLikelyRef.current = hasSpeech
+
+        if (hasSpeech) {
+          recentSpeechMsRef.current = SILENCE_RELEASE_MS
+          lowVolumeMsRef.current = 0
+          highNoiseMsRef.current = 0
+          clippingMsRef.current = 0
+          if (lastAudioIssueRef.current) {
+            lastAudioIssueRef.current = null
+            setError((current) => (current && current.includes('麥克風') ? null : current))
+          }
+          return
+        }
+
+        recentSpeechMsRef.current = Math.max(0, recentSpeechMsRef.current - AUDIO_QUALITY_POLL_MS)
+        lowVolumeMsRef.current = rms < LOW_VOLUME_RMS_THRESHOLD ? lowVolumeMsRef.current + AUDIO_QUALITY_POLL_MS : Math.max(0, lowVolumeMsRef.current - AUDIO_QUALITY_POLL_MS)
+        highNoiseMsRef.current = rms > NOISE_RMS_THRESHOLD ? highNoiseMsRef.current + AUDIO_QUALITY_POLL_MS : Math.max(0, highNoiseMsRef.current - AUDIO_QUALITY_POLL_MS)
+        clippingMsRef.current = peak > 0.98 ? clippingMsRef.current + AUDIO_QUALITY_POLL_MS : Math.max(0, clippingMsRef.current - AUDIO_QUALITY_POLL_MS)
+
+        let issue: AudioIssue = null
+        if (clippingMsRef.current >= 360) {
+          issue = 'clipping'
+        } else if (highNoiseMsRef.current >= 1200) {
+          issue = 'high-noise'
+        } else if (lowVolumeMsRef.current >= 1500) {
+          issue = 'low-volume'
+        }
+
+        if (issue !== lastAudioIssueRef.current) {
+          lastAudioIssueRef.current = issue
+          const message = resolveIssueMessage(issue)
+          if (message) {
+            setError(message)
+          }
+        }
+      }, AUDIO_QUALITY_POLL_MS)
+    } catch {
+      // analysis is best-effort only
+    }
+  }, [])
 
   const setNotesValue = useCallback((value: string) => {
     setNotes(value)
@@ -146,14 +300,37 @@ export function useInterviewAssistant({
   }, [persistDraft])
 
   const stopListening = useCallback(() => {
-    recognitionRef.current?.stop()
-    recognitionRef.current = null
-    setIsListening(false)
-  }, [])
+    const recorder = recorderRef.current
+    isStoppingRef.current = true
 
-  const startListening = useCallback(() => {
+    if (recorder && recorder.state !== 'inactive') {
+      try {
+        recorder.requestData()
+      } catch {
+        // ignore requestData failures on some runtimes
+      }
+      recorder.stop()
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+
+    stopAudioAnalysis()
+
+    recorderRef.current = null
+    initializationChunkRef.current = null
+    preRollChunkRef.current = null
+    uploadQueueRef.current = Promise.resolve()
+    noSpeechChunkCountRef.current = 0
+    setIsListening(false)
+    setPartialText('')
+  }, [stopAudioAnalysis])
+
+  const startListening = useCallback(async () => {
     if (!isSupported) {
-      setError('This browser runtime does not support SpeechRecognition.')
+      setError('目前環境不支援錄音（MediaRecorder/getUserMedia 不可用）。')
       return
     }
 
@@ -161,60 +338,169 @@ export function useInterviewAssistant({
 
     try {
       setError(null)
+      setRecognitionProvider('backend')
+      setRecognitionUsedFallback(false)
       if (!startedAt) {
         setStartedAt(Date.now())
       }
 
-      const Recognition = resolveSpeechRecognition()
-      if (!Recognition) {
-        setError('SpeechRecognition is unavailable.')
-        return
+      const sessionId = Date.now()
+      activeSessionRef.current = sessionId
+      isStoppingRef.current = false
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      })
+      streamRef.current = stream
+      startAudioAnalysis(stream)
+
+      const mimeType = resolveRecorderMimeType()
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+      recorderRef.current = recorder
+      initializationChunkRef.current = null
+
+      const isLikelyWebm = (mimeType || '').includes('webm')
+      const isLikelyMp4 = (mimeType || '').includes('mp4')
+
+      const normalizeChunk = (chunk: Blob): Blob => {
+        if (!chunk.size) return chunk
+
+        if (!isLikelyWebm && !isLikelyMp4) {
+          return chunk
+        }
+
+        if (!initializationChunkRef.current) {
+          initializationChunkRef.current = chunk
+          return chunk
+        }
+
+        return new Blob([initializationChunkRef.current, chunk], {
+          type: chunk.type || mimeType || 'audio/webm',
+        })
       }
 
-      const recognition = new Recognition()
-      recognition.continuous = true
-      recognition.interimResults = true
-      recognition.lang = 'zh-TW'
+      recorder.ondataavailable = (event: BlobEvent) => {
+        const uploadChunk = async (): Promise<void> => {
+          if (!event.data || !event.data.size || activeSessionRef.current !== sessionId) {
+            return
+          }
 
-      recognition.onresult = (event) => {
-        let nextPartial = ''
-        for (let index = event.resultIndex; index < event.results.length; index += 1) {
-          const result = event.results[index]
-          const text = result?.[0]?.transcript?.trim() ?? ''
-          if (!text) continue
+          const normalizedChunk = normalizeChunk(event.data)
+          if (normalizedChunk.size < MIN_CHUNK_BYTES) {
+            return
+          }
 
-          if (result.isFinal) {
-            setTranscriptEntries((previous) => [...previous, buildTranscriptEntry(text)])
-            setUpdatedAt(Date.now())
-            nextPartial = ''
-          } else {
-            nextPartial = text
+          const withinSpeechWindow = speechLikelyRef.current || recentSpeechMsRef.current > 0
+          if (!withinSpeechWindow) {
+            preRollChunkRef.current = normalizedChunk
+            return
+          }
+
+          try {
+            setPartialText('辨識中…')
+            const extension = mimeType?.includes('mp4') ? 'mp4' : mimeType?.includes('ogg') ? 'ogg' : 'webm'
+            const payloadBlob = preRollChunkRef.current
+              ? new Blob([preRollChunkRef.current, normalizedChunk], {
+                  type: normalizedChunk.type || event.data.type || mimeType || 'audio/webm',
+                })
+              : normalizedChunk
+
+            preRollChunkRef.current = null
+
+            const file = new File([payloadBlob], `chunk-${Date.now()}.${extension}`, {
+              type: normalizedChunk.type || event.data.type || mimeType || 'audio/webm',
+            })
+            const formData = new FormData()
+            formData.append('file', file)
+
+            const response = await request<SpeechTranscribeResponse>(
+              '/speech/transcribe?language=zh-TW&prefer_local=false',
+              {
+                method: 'POST',
+                body: formData,
+              },
+            )
+
+            if (activeSessionRef.current !== sessionId) {
+              return
+            }
+
+            if (response.provider) {
+              setRecognitionProvider(response.provider)
+            }
+            setRecognitionUsedFallback(Boolean(response.used_fallback))
+
+            if (response.error && response.error.toLowerCase().includes('no speech detected')) {
+              noSpeechChunkCountRef.current += 1
+              if (noSpeechChunkCountRef.current >= 2) {
+                setError('未偵測到清楚語音，請靠近麥克風並提高音量後再試。')
+              }
+              setPartialText('')
+              return
+            }
+
+            const text = (response.text || '').trim()
+            if (text) {
+              noSpeechChunkCountRef.current = 0
+              setError((current) => (current && current.includes('未偵測到清楚語音') ? null : current))
+              setTranscriptEntries((previous) => [...previous, buildTranscriptEntry(text)])
+              setUpdatedAt(Date.now())
+            }
+
+            setPartialText('')
+          } catch (unknownError) {
+            if (activeSessionRef.current !== sessionId) {
+              return
+            }
+            const message = unknownError instanceof Error ? unknownError.message : '語音轉錄失敗'
+            setError(message)
+            setPartialText('')
           }
         }
-        setPartialText(nextPartial)
+
+        uploadQueueRef.current = uploadQueueRef.current
+          .then(uploadChunk)
+          .catch(() => {
+            // keep queue alive
+          })
       }
 
-      recognition.onerror = (event) => {
-        setError(
-          event?.error ? `Speech recognition error: ${event.error}` : 'Speech recognition failed.'
-        )
+      recorder.onerror = (event: Event) => {
+        const recorderError = (event as unknown as { error?: { message?: string } })?.error?.message
+        setError(recorderError || '錄音裝置錯誤，請檢查麥克風權限與裝置狀態。')
         setIsListening(false)
       }
 
-      recognition.onend = () => {
-        setIsListening(false)
+      recorder.onstop = () => {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop())
+          streamRef.current = null
+        }
+
+        stopAudioAnalysis()
+
+        recorderRef.current = null
+        initializationChunkRef.current = null
+        preRollChunkRef.current = null
+        if (!isStoppingRef.current) {
+          setIsListening(false)
+        }
       }
 
-      recognitionRef.current = recognition
-      recognition.start()
+      recorder.start(RECORDER_TIMESLICE_MS)
       setIsListening(true)
     } catch (unknownError) {
       const message =
-        unknownError instanceof Error ? unknownError.message : 'Unable to start recognition.'
+        unknownError instanceof Error ? unknownError.message : 'Unable to start recording.'
       setError(message)
       setIsListening(false)
     }
-  }, [isListening, isSupported, startedAt])
+  }, [isListening, isSupported, startAudioAnalysis, startedAt, stopAudioAnalysis])
 
   const resetSession = useCallback(
     (shouldClearDraft: boolean) => {
@@ -273,6 +559,8 @@ export function useInterviewAssistant({
     isListening,
     isOnline,
     error,
+    recognitionProvider,
+    recognitionUsedFallback,
     notes,
     partialText,
     transcriptEntries,

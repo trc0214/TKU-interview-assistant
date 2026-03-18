@@ -7,16 +7,18 @@
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; 
-               script-src 'self' 'unsafe-inline' https://meet.jit.si; 
+               script-src 'self' 'unsafe-inline' https://aka.ms https://csspeechstorage.blob.core.windows.net; 
                style-src 'self' 'unsafe-inline'; 
                img-src 'self' data:; 
-               connect-src 'self' https://meet.jit.si wss://meet.jit.si http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000;
-               frame-src https://meet.jit.si;"
+               connect-src 'self' https://*.livekit.cloud wss://*.livekit.cloud https://tku-xv4va2w9.livekit.cloud wss://tku-xv4va2w9.livekit.cloud http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 https://aka.ms https://csspeechstorage.blob.core.windows.net https://*.tts.speech.microsoft.com wss://*.tts.speech.microsoft.com https://*.stt.speech.microsoft.com wss://*.stt.speech.microsoft.com;
+               frame-src 'self';"
     />
     <title>tku-interviewassistant-v2</title>
   </head>
   <body>
     <div id="root"></div>
+    <!-- Azure Speech SDK -->
+    <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
