@@ -157,6 +157,14 @@ def build_prompt(
 
 
 def _extract_json(text: str) -> dict[str, Any]:
+  def strip_fences(raw: str) -> str:
+    content = raw.strip()
+    if '```' in content:
+      fenced = re.search(r'```(?:json)?\s*(.*?)\s*```', content, re.DOTALL | re.IGNORECASE)
+      if fenced and fenced.group(1).strip():
+        return fenced.group(1).strip()
+    return content
+
   def extract_first_json_object(raw: str) -> str | None:
     start = raw.find('{')
     if start == -1:
@@ -191,21 +199,149 @@ def _extract_json(text: str) -> dict[str, Any]:
           return raw[start : i + 1]
     return None
 
-  text = text.strip()
+  def trim_to_last_complete_token(raw: str) -> str:
+    in_string = False
+    escape = False
+    last_safe_index = -1
+    for index, ch in enumerate(raw):
+      if escape:
+        escape = False
+        continue
+      if ch == '\\' and in_string:
+        escape = True
+        continue
+      if ch == '"':
+        in_string = not in_string
+        continue
+      if not in_string and ch in [',', '}', ']']:
+        last_safe_index = index
 
-  # Handle fenced blocks even when the model adds prefatory text.
-  if '```' in text:
-    fenced = re.search(r'```(?:json)?\s*(.*?)\s*```', text, re.DOTALL | re.IGNORECASE)
-    if fenced and fenced.group(1).strip():
-      text = fenced.group(1).strip()
+    if last_safe_index == -1:
+      return raw
+    return raw[: last_safe_index + 1]
+
+  def repair_json_object(raw: str) -> str | None:
+    extracted = extract_first_json_object(raw)
+    if extracted:
+      return extracted
+
+    start = raw.find('{')
+    if start == -1:
+      return None
+
+    candidate = raw[start:].strip()
+    candidate = trim_to_last_complete_token(candidate)
+    candidate = re.sub(r',\s*([}\]])', r'\1', candidate)
+
+    in_string = False
+    escape = False
+    depth = 0
+    for ch in candidate:
+      if escape:
+        escape = False
+        continue
+      if ch == '\\' and in_string:
+        escape = True
+        continue
+      if ch == '"':
+        in_string = not in_string
+        continue
+      if in_string:
+        continue
+      if ch == '{':
+        depth += 1
+      elif ch == '}':
+        depth = max(0, depth - 1)
+
+    if in_string:
+      candidate += '"'
+    if depth > 0:
+      candidate += '}' * depth
+
+    candidate = re.sub(r',\s*([}\]])', r'\1', candidate)
+    return candidate if candidate.startswith('{') else None
+
+  text = strip_fences(text)
 
   try:
     return json.loads(text)
   except json.JSONDecodeError:
-    extracted = extract_first_json_object(text)
-    if extracted is None:
+    repaired = repair_json_object(text)
+    if repaired is None:
       raise
-    return json.loads(extracted)
+    return json.loads(repaired)
+
+
+def _normalize_analysis_payload(parsed: dict[str, Any]) -> dict[str, Any]:
+  def clamp_score(key: str) -> int:
+    try:
+      return max(0, min(100, int(parsed.get(key, 0))))
+    except Exception:
+      return 0
+
+  def to_list_of_strings(key: str, limit: int = 3) -> list[str]:
+    raw = parsed.get(key)
+    if not isinstance(raw, list):
+      return []
+    items: list[str] = []
+    for value in raw:
+      text = str(value).strip()
+      if text:
+        items.append(text)
+      if len(items) >= limit:
+        break
+    return items
+
+  def build_summary_fallback(
+    *,
+    overall_score: int,
+    professional_score: int,
+    communication_score: int,
+    problem_solving_score: int,
+    strengths: list[str],
+    risks: list[str],
+  ) -> str:
+    strength_hint = strengths[0] if strengths else '具備與職務相關的可用能力'
+    risk_hint = risks[0] if risks else '仍需透過面試驗證實作深度與情境應變能力'
+    return (
+      f'候選人整體 AI 評分為 {overall_score} 分（專業 {professional_score}／溝通 {communication_score}／問題解決 {problem_solving_score}）。'
+      f'主要優勢：{strength_hint}；主要風險：{risk_hint}。'
+    )
+
+  overall_score = clamp_score('overall_score')
+  professional_score = clamp_score('professional_score')
+  communication_score = clamp_score('communication_score')
+  problem_solving_score = clamp_score('problem_solving_score')
+  strengths = to_list_of_strings('strengths')
+  risks = to_list_of_strings('risks')
+  suggested_questions = to_list_of_strings('suggested_questions')
+
+  summary = str(parsed.get('summary', '') or '').strip()
+  if len(summary) > 350:
+    summary = summary[:350].rstrip() + '…'
+  if not summary:
+    summary = build_summary_fallback(
+      overall_score=overall_score,
+      professional_score=professional_score,
+      communication_score=communication_score,
+      problem_solving_score=problem_solving_score,
+      strengths=strengths,
+      risks=risks,
+    )
+
+  disclaimer = str(parsed.get('disclaimer', '') or '').strip() or '本分析結果僅供招募人員參考，最終決策由人類負責'
+
+  return {
+    'overall_score': overall_score,
+    'professional_score': professional_score,
+    'communication_score': communication_score,
+    'problem_solving_score': problem_solving_score,
+    'summary': summary,
+    'strengths': strengths,
+    'risks': risks,
+    'suggested_questions': suggested_questions,
+    'disclaimer': disclaimer,
+  }
 
 
 async def generate_analysis(*, prompt: str) -> tuple[dict[str, Any], bool, str]:
@@ -282,11 +418,11 @@ async def generate_analysis(*, prompt: str) -> tuple[dict[str, Any], bool, str]:
 
   try:
     parsed = _extract_json(text)
-    return parsed, False, settings.gemini_model
+    return _normalize_analysis_payload(parsed), False, settings.gemini_model
   except Exception as exc:
     # Retry once with a shorter/stricter prompt (models sometimes truncate or add extra text).
     safe = _redact_api_key(str(exc))
-    snippet = _redact_api_key(text[:500])
+    snippet = _redact_api_key(text[:260])
 
     retry_prompt = (
       "請只輸出『有效 JSON』，禁止輸出任何說明文字或 Markdown。\n"
@@ -343,10 +479,10 @@ async def generate_analysis(*, prompt: str) -> tuple[dict[str, Any], bool, str]:
 
       try:
         parsed2 = _extract_json(text2)
-        return parsed2, False, settings.gemini_model
+        return _normalize_analysis_payload(parsed2), False, settings.gemini_model
       except Exception as exc2:
         safe2 = _redact_api_key(str(exc2))
-        snippet2 = _redact_api_key(text2[:500])
+        snippet2 = _redact_api_key(text2[:260])
         return (
           _mock_analysis(
             summary=(
