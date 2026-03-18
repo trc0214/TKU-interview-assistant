@@ -63,6 +63,10 @@ class AzureSpeechService:
             sdk.PropertyId.SpeechServiceResponse_RequestWordLevelTimestamps,
             "true",
         )
+        speech_config.set_property(
+            sdk.PropertyId.SpeechServiceResponse_PostProcessingOption,
+            "TrueText",
+        )
 
         return speech_config
 
