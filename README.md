@@ -81,7 +81,7 @@ Copy [backend/env.example](backend/env.example) to `backend/.env` and fill in th
 Minimum required for local demo:
 
 ```env
-DATABASE_URL=sqlite:///./backend/app.db
+DATABASE_URL=sqlite:///./app.db
 AUTH_SECRET_KEY=replace-with-a-long-random-secret
 GEMINI_API_KEY=...
 LIVEKIT_URL=wss://your-livekit-host
