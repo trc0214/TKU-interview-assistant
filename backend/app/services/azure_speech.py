@@ -7,6 +7,7 @@ Supports both streaming audio and bulk file transcription.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import subprocess
 from typing import Any
@@ -146,7 +147,7 @@ class AzureSpeechService:
             )
 
             # Perform recognition
-            result = recognizer.recognize_once()
+            result = await asyncio.to_thread(recognizer.recognize_once)
 
             if result.reason == sdk.ResultReason.RecognizedSpeech:
                 words = self._extract_words_from_json(result.json)

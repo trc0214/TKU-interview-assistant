@@ -29,6 +29,7 @@ export function inferInterviewInsights(data: {
   notesText?: string
   keyTerms?: string[]
   focusPriority?: string
+  recruiterQuestion?: string
   context?: Record<string, unknown>
 }): Promise<InterviewInsight> {
   return request<InterviewInsight>('/ai-analyses/interview-insights', { method: 'POST', body: data })

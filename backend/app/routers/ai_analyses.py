@@ -7,8 +7,8 @@ from app import crud, models
 from app.deps import get_current_user
 from app.db import get_db
 from app.schemas import AIAnalysisCreate, AIAnalysisHistoryOut, AIAnalysisOut, InterviewInsightOut, InterviewInsightRequest
-from app.services.custom_model import infer_interview_insight
 from app.services.gemini import PROMPT_VERSION, build_prompt, generate_analysis
+from app.services.interview_assistant_pipeline import infer_ai_interview_assistant
 
 
 router = APIRouter(prefix='/ai-analyses', tags=['ai-analyses'])
@@ -19,7 +19,13 @@ async def infer_interview_insights(
   data: InterviewInsightRequest,
   _current_user: models.User = Depends(get_current_user),
 ):
-  return await infer_interview_insight(data)
+  recruiter_question = data.recruiter_question or str(data.context.get('recruiterQuestion') or '')
+  return await infer_ai_interview_assistant(
+    recruiter_question=recruiter_question,
+    transcript_text=data.transcript_text,
+    notes_text=data.notes_text,
+    key_terms=data.key_terms,
+  )
 
 
 @router.get('', response_model=list[AIAnalysisOut])

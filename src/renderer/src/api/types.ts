@@ -79,6 +79,16 @@ export type InterviewInsight = {
   followUpQuestions: string[]
   summary: string
   usedFallback: boolean
+  sttValidatedText: string
+  bufferStatement: string
+  structuredTalkingPoints: string[]
+  retrievedCheatsheets: Array<{
+    title: string
+    content: string
+    tags: string[]
+    score: number
+  }>
+  promptVersion: string
   rawResponse: Record<string, unknown>
 }
 

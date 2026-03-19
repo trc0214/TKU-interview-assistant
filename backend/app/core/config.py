@@ -36,6 +36,11 @@ class Settings(BaseSettings):
   custom_model_timeout_seconds: int = 20
   custom_model_name: str = 'custom-interview-v1'
 
+  vector_store_endpoint: str | None = None
+  vector_store_api_key: str | None = None
+  vector_store_timeout_seconds: int = 8
+  interview_assistant_top_k: int = 3
+
   livekit_url: str | None = None
   livekit_api_key: str | None = None
   livekit_api_secret: str | None = None

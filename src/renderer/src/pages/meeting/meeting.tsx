@@ -61,13 +61,17 @@ export function MeetingPage(): ReactElement {
   const interviewId = Number.isFinite(interviewIdParam) ? interviewIdParam : undefined
   const roomName = searchParams.get('room') || buildRoomName(interviewId)
 
+  const recruiterQuestion =
+    'How do you approach product growth when you notice your key metrics are declining?'
+
+  const [cheatQuery, setCheatQuery] = useState('')
+
   const [isMeetingStarted, setIsMeetingStarted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [interview, setInterview] = useState<Interview | null>(null)
-  const [timerTick, setTimerTick] = useState(0)
   const [insightLoading, setInsightLoading] = useState(false)
   const [insightError, setInsightError] = useState<string | null>(null)
   const [insight, setInsight] = useState<InterviewInsight | null>(null)
@@ -81,6 +85,38 @@ export function MeetingPage(): ReactElement {
   const [recoverableLocalDraft, setRecoverableLocalDraft] = useState<InterviewAssistantDraft | null>(null)
   const [dismissedRecovery, setDismissedRecovery] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+
+  const cheatSheets = useMemo(() => {
+    if (insight?.retrievedCheatsheets?.length) {
+      return insight.retrievedCheatsheets.map((item) => ({
+        title: item.title,
+        situation: item.content,
+      }))
+    }
+
+    return [
+      {
+        title: 'RAG System Design',
+        situation: 'Use query rewrite, vector retrieval, and grounded synthesis with measurable outcomes.',
+      },
+      {
+        title: 'MCP Integration',
+        situation: 'Explain capability discovery, tool safety, and policy-governed invocation patterns.',
+      },
+      {
+        title: 'Vector DB Trade-offs',
+        situation: 'Cover index strategy, latency/recall balance, and metadata filtering for precision.',
+      },
+    ]
+  }, [insight?.retrievedCheatsheets])
+
+  const filteredCheatSheets = useMemo(() => {
+    const query = cheatQuery.trim().toLowerCase()
+    if (!query) return cheatSheets
+    return cheatSheets.filter(
+      (item) => item.title.toLowerCase().includes(query) || item.situation.toLowerCase().includes(query),
+    )
+  }, [cheatQuery, cheatSheets])
 
   const syncedEntryIdsRef = useRef<Set<string>>(new Set())
   const syncingRef = useRef(false)
@@ -170,31 +206,7 @@ export function MeetingPage(): ReactElement {
     }
   }, [interviewId])
 
-  useEffect(() => {
-    if (!assistant.startedAt) return
-
-    const timerId = window.setInterval(() => {
-      setTimerTick((previous) => previous + 1)
-    }, 1000)
-
-    return () => {
-      window.clearInterval(timerId)
-    }
-  }, [assistant.startedAt])
-
   const canSaveToInterview = Boolean(interviewId)
-
-  const sessionDurationLabel = useMemo(() => {
-    if (!assistant.startedAt) return '00:00:00'
-
-    const elapsedMs = Date.now() - assistant.startedAt
-    const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000))
-    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
-    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
-    const seconds = String(totalSeconds % 60).padStart(2, '0')
-
-    return `${hours}:${minutes}:${seconds}`
-  }, [assistant.startedAt, timerTick])
 
   const meetingDiagnosticHint = useMemo(() => getMeetingDiagnosticHint(meetingError), [meetingError])
 
@@ -360,6 +372,7 @@ export function MeetingPage(): ReactElement {
         notesText: assistant.notes,
         keyTerms: assistant.keyTerms,
         focusPriority: 'matching_score',
+        recruiterQuestion,
         context: {
           roomName,
           isOnline: assistant.isOnline,
@@ -523,112 +536,150 @@ export function MeetingPage(): ReactElement {
         </div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[1.65fr_1fr]">
-        <section className="rounded-lg border border-slate-200 bg-white p-3">
-          {!isMeetingStarted ? (
-            <div className="flex min-h-[480px] flex-col items-center justify-center gap-4 rounded-md border border-dashed border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm text-slate-600">準備進入線上會議</p>
-              {meetingError ? <p className="text-xs text-rose-600">{meetingError}</p> : null}
-              {meetingDiagnosticHint ? (
-                <p className="max-w-[560px] rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  {meetingDiagnosticHint}
-                </p>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={handleJoinMeeting}
-                disabled={isJoining || loading}
-                className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isJoining ? '正在建立房間…' : '進入會議'}
-              </button>
-
-              <p className="text-xs text-slate-500">會議已改為 LiveKit 自架流程，並會持續把逐字稿與會議事件寫回後端。</p>
-            </div>
-          ) : meetingToken && meetingServerUrl ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                <span>{meetingConnected ? 'LiveKit 已連線' : 'LiveKit 連線中…'}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    manualLeaveRef.current = true
-                    void handleLeaveMeeting('completed')
-                  }}
-                  className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  結束並離開會議
-                </button>
-              </div>
-              {meetingDiagnosticHint ? (
-                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  {meetingDiagnosticHint}
-                </p>
-              ) : null}
-
-              <LiveKitMeetingPanel
-                token={meetingToken}
-                serverUrl={meetingServerUrl}
-                connect={isMeetingStarted}
-                onConnected={() => {
-                  setMeetingConnected(true)
-                  setMeetingError(null)
-                  void pushAssistantSync({
-                    eventType: 'meeting_connected',
-                    eventPayload: { roomName },
-                    meetingConnectedOverride: true,
-                  })
-                }}
-                onDisconnected={() => {
-                  if (manualLeaveRef.current) {
-                    manualLeaveRef.current = false
-                    return
-                  }
-                  void handleLeaveMeeting('disconnected')
-                }}
-                onError={(error) => {
-                  setMeetingConnected(false)
-                  setMeetingError(error.message)
-                  void pushAssistantSync({
-                    eventType: 'meeting_error',
-                    eventPayload: { message: error.message },
-                    meetingConnectedOverride: false,
-                  })
-                }}
-              />
-            </div>
-          ) : (
-            <div className="flex min-h-[480px] items-center justify-center rounded-md border border-dashed border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-              無法建立 LiveKit 連線，請重新進入會議。
-            </div>
-          )}
-        </section>
-
+      <div className="grid gap-4 xl:grid-cols-3">
         <section className="space-y-4">
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">Interview Assistant</h2>
-              <span className="text-xs text-slate-500">{assistant.isOnline ? 'Online' : 'Offline'}</span>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">Interview Conversation</h2>
+                <p className="mt-0.5 text-xs text-slate-500">Room: {roomName}</p>
+              </div>
+              <div className="text-xs text-slate-500">{meetingConnected ? 'Connected' : isMeetingStarted ? 'Connecting…' : 'Not started'}</div>
             </div>
 
-            <p className="mt-2 text-xs text-slate-500">Session Duration: {sessionDurationLabel}</p>
-            {assistantSession ? (
-              <p className="mt-1 text-xs text-slate-500">Session #{assistantSession.id} / Events {assistantSession.eventCount}</p>
-            ) : null}
-            <p className="mt-1 text-xs text-slate-500">
-              語音辨識方案：{assistant.recognitionProvider}
-              {assistant.recognitionUsedFallback ? '（fallback）' : ''}
-            </p>
+            <div className="mt-3">
+              {!isMeetingStarted ? (
+                <div className="overflow-hidden rounded-md border border-slate-200 bg-slate-950">
+                  <div className="relative flex h-[360px] items-center justify-center bg-slate-950">
+                    <div className="rounded-md border border-slate-800 bg-slate-900/30 px-3 py-2 text-xs text-slate-200">
+                      Video conference preview
+                    </div>
+
+                    <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-800 bg-slate-900/40 px-3 py-2 text-xs text-slate-200">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-800 bg-slate-950">
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 1v22" />
+                          <path d="M5 8h14" />
+                        </svg>
+                      </span>
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-800 bg-slate-950">
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M23 7l-7 5 7 5V7z" />
+                          <path d="M1 5h15v14H1z" />
+                        </svg>
+                      </span>
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-900/60 bg-rose-950/30">
+                        <svg viewBox="0 0 24 24" className="h-4 w-4 text-rose-200" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M22 2 2 22" />
+                          <path d="M2 2l20 20" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2 border-t border-slate-800 bg-slate-950 p-3">
+                    {meetingError ? <p className="text-xs text-rose-300">{meetingError}</p> : null}
+                    {meetingDiagnosticHint ? (
+                      <p className="rounded-md border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">
+                        {meetingDiagnosticHint}
+                      </p>
+                    ) : null}
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs text-slate-300">Start the meeting when you are ready.</p>
+                      <button
+                        type="button"
+                        onClick={handleJoinMeeting}
+                        disabled={isJoining || loading}
+                        className="rounded-md bg-white px-3 py-2 text-xs font-medium text-slate-900 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isJoining ? 'Starting…' : 'Join'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : meetingToken && meetingServerUrl ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    <span>{meetingConnected ? 'LiveKit Connected' : 'LiveKit Connecting…'}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        manualLeaveRef.current = true
+                        void handleLeaveMeeting('completed')
+                      }}
+                      className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      End
+                    </button>
+                  </div>
+
+                  <LiveKitMeetingPanel
+                    token={meetingToken}
+                    serverUrl={meetingServerUrl}
+                    connect={isMeetingStarted}
+                    className="h-[360px]"
+                    onConnected={() => {
+                      setMeetingConnected(true)
+                      setMeetingError(null)
+                      void pushAssistantSync({
+                        eventType: 'meeting_connected',
+                        eventPayload: { roomName },
+                        meetingConnectedOverride: true,
+                      })
+                    }}
+                    onDisconnected={() => {
+                      if (manualLeaveRef.current) {
+                        manualLeaveRef.current = false
+                        return
+                      }
+                      void handleLeaveMeeting('disconnected')
+                    }}
+                    onError={(error) => {
+                      setMeetingConnected(false)
+                      setMeetingError(error.message)
+                      void pushAssistantSync({
+                        eventType: 'meeting_error',
+                        eventPayload: { message: error.message },
+                        meetingConnectedOverride: false,
+                      })
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex h-[360px] items-center justify-center rounded-md border border-dashed border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                  Unable to establish LiveKit connection.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-xs font-semibold text-slate-900">Recruiter</div>
+              <div className="text-[11px] text-slate-500">Question</div>
+            </div>
+            <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+              {recruiterQuestion}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-xs font-semibold text-slate-900">You</div>
+              <div className="text-[11px] text-slate-500">Status</div>
+            </div>
+            <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-800">
+              {assistant.isListening ? '...You are talking...' : '...You are talking...'}
+            </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 disabled={!assistant.isSupported || assistant.isListening}
                 onClick={assistant.startListening}
-                className="rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                開始轉錄
+                Start transcription
               </button>
               <button
                 type="button"
@@ -636,131 +687,126 @@ export function MeetingPage(): ReactElement {
                 onClick={assistant.stopListening}
                 className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                停止轉錄
-              </button>
-              <button
-                type="button"
-                onClick={() => assistant.regenerateNotes()}
-                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                產生筆記
-              </button>
-              <button
-                type="button"
-                onClick={handleRestoreLocalDraft}
-                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                復原本機草稿
-              </button>
-              <button
-                type="button"
-                onClick={() => assistant.resetSession(true)}
-                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                清空
+                Stop
               </button>
             </div>
-
             {assistant.error ? <p className="mt-2 text-xs text-rose-600">{assistant.error}</p> : null}
             {!assistant.isSupported ? (
-              <p className="mt-2 text-xs text-amber-700">目前環境不支援即時語音辨識，仍可手動編輯筆記。</p>
+              <p className="mt-2 text-xs text-amber-700">Speech recognition is not supported in this environment.</p>
             ) : null}
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-900">Answer Suggestion</h2>
+              <div className="text-xs text-slate-500">Content helper</div>
+            </div>
+
+            <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">Question</div>
+              <div className="mt-2 text-sm text-slate-800">{recruiterQuestion}</div>
+            </div>
+
+            <div className="mt-3 rounded-md border border-slate-200 bg-white p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                Say this to buy you some time!
+              </div>
+              <div className="mt-2 text-sm text-slate-800">{insight?.bufferStatement || 'Run AI Interview Insight to generate a buffer statement.'}</div>
+            </div>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <h3 className="text-sm font-semibold text-slate-900">關鍵詞</h3>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-900">Answer Formulation</h2>
+              <div className="text-xs text-slate-500">Talking Points</div>
+            </div>
+
+            {insightLoading ? <div className="mt-3 text-sm text-slate-600">Generating AI talking points…</div> : null}
+            {insightError ? <div className="mt-3 text-sm text-rose-600">{insightError}</div> : null}
+
+            <ol className="mt-3 space-y-3 text-sm text-slate-800">
+              {(insight?.structuredTalkingPoints?.length ? insight.structuredTalkingPoints : [
+                'Step 1 — Clarify the problem and success metric.',
+                'Step 2 — Explain technical approach with trade-offs.',
+                'Step 3 — Close with outcome and validation plan.',
+              ]).map((point, index) => (
+                <li key={`${index}-${point}`} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <div className="font-semibold text-slate-900">{index + 1}. {point}</div>
+                </li>
+              ))}
+            </ol>
+
             <div className="mt-3 flex flex-wrap gap-2">
-              {assistant.keyTerms.length ? (
-                assistant.keyTerms.map((term) => (
-                  <span
-                    key={term}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700"
-                  >
-                    {term}
-                  </span>
-                ))
-              ) : (
-                <span className="text-xs text-slate-500">尚無偵測結果</span>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <h3 className="text-sm font-semibold text-slate-900">即時逐字稿</h3>
-            {assistant.partialText ? (
-              <p className="mt-2 rounded-md border border-sky-100 bg-sky-50 px-2 py-1 text-xs text-sky-700">
-                {assistant.partialText}
-              </p>
-            ) : null}
-
-            <div className="mt-3 max-h-48 space-y-2 overflow-auto pr-1">
-              {assistant.transcriptEntries.length ? (
-                assistant.transcriptEntries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700"
-                  >
-                    <div className="mb-1 text-[11px] text-slate-500">{new Date(entry.createdAt).toLocaleTimeString()}</div>
-                    <div>{entry.text}</div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-slate-500">等待語音輸入…</p>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <h3 className="text-sm font-semibold text-slate-900">面試筆記</h3>
-            <textarea
-              value={assistant.notes}
-              onChange={(event) => assistant.setNotes(event.target.value)}
-              rows={14}
-              className="mt-3 w-full resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              placeholder="在此整理重點、評估、後續問題與決策建議"
-            />
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-900">AI 決策支援</h3>
               <button
                 type="button"
-                disabled={insightLoading}
                 onClick={handleGenerateInsights}
+                disabled={insightLoading || !assistant.transcriptText.trim()}
                 className="rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {insightLoading ? '推論中…' : '執行 AI 推論'}
+                {insightLoading ? 'Generating…' : 'Run AI Interview Insight'}
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyInsightToInterview}
+                disabled={!insight || saving || !canSaveToInterview}
+                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Apply to Interview Record
               </button>
             </div>
+          </div>
+        </section>
 
-            {insightError ? <p className="mt-2 text-xs text-rose-600">{insightError}</p> : null}
-
-            {insight ? (
-              <div className="mt-3 space-y-2 text-xs text-slate-700">
-                <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
-                  <div>Matching: {insight.matchingScore}</div>
-                  <div>Communication: {insight.communicationScore}</div>
-                  <div>Technical: {insight.technicalDepthScore}</div>
-                  <div>Confidence: {insight.confidence}</div>
-                  <div>Recommendation: {insight.recommendation}</div>
-                  {insight.usedFallback ? <div className="text-amber-700">Fallback 模式（模型服務未可用）</div> : null}
-                </div>
-
-                <p>{insight.summary || '尚無摘要'}</p>
-
-                <button
-                  type="button"
-                  disabled={!canSaveToInterview || saving}
-                  onClick={handleApplyInsightToInterview}
-                  className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  套用建議到評分/決策/筆記
-                </button>
+        <section className="space-y-4">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-900">CheatSheets</h2>
+              <div className="flex items-center gap-2 text-slate-500">
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+                  <path d="M19.4 15a7.8 7.8 0 0 0 .1-6l2-1.5-2-3.5-2.4 1a8.4 8.4 0 0 0-5.2-2l-.5-2.6H9.6L9.1 3a8.4 8.4 0 0 0-5.2 2l-2.4-1-2 3.5 2 1.5a7.8 7.8 0 0 0 .1 6l-2 1.5 2 3.5 2.4-1a8.4 8.4 0 0 0 5.2 2l.5 2.6h4.8l.5-2.6a8.4 8.4 0 0 0 5.2-2l2.4 1 2-3.5-2-1.5Z" />
+                </svg>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
               </div>
-            ) : (
-              <p className="mt-2 text-xs text-slate-500">推論後可直接回填面試評分與決策建議。</p>
-            )}
+            </div>
+            <p className="mt-1 text-xs text-slate-500">Quick reference during the interview.</p>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-xs font-semibold text-slate-900" htmlFor="cheat-search">
+                Search
+              </label>
+              <div className="text-xs text-slate-500">{filteredCheatSheets.length} items</div>
+            </div>
+
+            <input
+              id="cheat-search"
+              value={cheatQuery}
+              onChange={(event) => setCheatQuery(event.target.value)}
+              placeholder="Search CheatSheets"
+              className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            />
+
+            <div className="mt-3 max-h-[520px] overflow-auto rounded-md border border-slate-200">
+              {filteredCheatSheets.length ? (
+                <ul className="divide-y divide-slate-200">
+                  {filteredCheatSheets.map((item) => (
+                    <li key={item.title} className="p-3">
+                      <div className="text-sm font-semibold text-slate-900">{item.title}</div>
+                      <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Situation</div>
+                      <div className="mt-1 text-sm text-slate-700">{item.situation}</div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="p-3 text-sm text-slate-600">No matches.</div>
+              )}
+            </div>
           </div>
         </section>
       </div>

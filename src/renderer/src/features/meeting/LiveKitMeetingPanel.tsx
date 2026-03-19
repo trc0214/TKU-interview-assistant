@@ -6,6 +6,7 @@ type LiveKitMeetingPanelProps = {
   token: string
   serverUrl: string
   connect: boolean
+  className?: string
   onConnected?: () => void
   onDisconnected?: () => void
   onError?: (error: Error) => void
@@ -15,12 +16,15 @@ function LiveKitMeetingPanelBase({
   token,
   serverUrl,
   connect,
+  className,
   onConnected,
   onDisconnected,
   onError,
 }: LiveKitMeetingPanelProps) {
+  const containerClassName = className ?? 'h-[72vh] min-h-[520px]'
+
   return (
-    <div className="h-[72vh] min-h-[520px] overflow-hidden rounded-md border border-slate-200 bg-slate-950">
+    <div className={`${containerClassName} overflow-hidden rounded-md border border-slate-200 bg-slate-950`}>
       <LiveKitRoom
         token={token}
         serverUrl={serverUrl}

@@ -143,6 +143,7 @@ class InterviewInsightRequest(APIModel):
   key_terms: list[str] = Field(default_factory=list)
   focus_priority: str = 'matching_score'
   context: dict[str, Any] = Field(default_factory=dict)
+  recruiter_question: str = ''
 
 
 class InterviewInsightOut(APIModel):
@@ -158,6 +159,11 @@ class InterviewInsightOut(APIModel):
   follow_up_questions: list[str] = Field(default_factory=list)
   summary: str
   used_fallback: bool = False
+  stt_validated_text: str = ''
+  buffer_statement: str = ''
+  structured_talking_points: list[str] = Field(default_factory=list)
+  retrieved_cheatsheets: list[dict[str, Any]] = Field(default_factory=list)
+  prompt_version: str = ''
   raw_response: dict[str, Any] = Field(default_factory=dict)
 
 

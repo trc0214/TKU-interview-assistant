@@ -1,170 +1,198 @@
-# AI Interview Assistant and Resume Management System
+# AI Interview Assistant
 
-An Electron + React + FastAPI system for resume screening, interview workflow management, online interviews, transcript capture, and AI-assisted hiring decisions.
+Electron + React + FastAPI system for interview operations, speech-to-text, and AI-assisted response coaching.
 
-## What This Project Solves
+## What is optimized in this version
 
-- Resume screening is slow and inconsistent across reviewers.
-- Interview outcomes are often hard to quantify or trace back to evidence.
-- Online interviews, notes, AI scoring, and hiring decisions are usually split across different tools.
+- AI workflow is now strict and modular: `STT validated text -> RAG retrieval -> AI coaching output`.
+- Interview insights endpoint is fully async and returns UI-ready outputs for a 3-column meeting view.
+- Azure STT diagnostics are operationalized with a dedicated benchmark script covering latency, no-match, cancellation, phrase-list, and recognition mode comparisons.
 
-This project turns that into one workflow system:
+## Core architecture
 
-- Job and resume management
-- AI resume analysis
-- LiveKit-based online interview room
-- Real-time transcript capture and keyword extraction
-- AI decision support that can write back to interview records
-- Recoverable interview sessions with server-side audit trail
+### Frontend
+- Electron shell + React pages under `src/renderer/src/pages`
+- Interview assistant state and transcript pipeline under `src/renderer/src/features/interviewAssistant`
+- Meeting page under `src/renderer/src/pages/meeting/meeting.tsx`
 
-## Current Highlights
+### Backend
+- API routes under `backend/app/routers`
+- AI and speech services under `backend/app/services`
+- Main interview-assistant flow:
+  - `backend/app/services/azure_speech.py`
+  - `backend/app/services/unified_speech.py`
+  - `backend/app/services/interview_assistant_retrieval.py`
+  - `backend/app/services/interview_assistant_generation.py`
+  - `backend/app/services/interview_assistant_pipeline.py`
 
-- Resume CRUD, job CRUD, interview CRUD, and JWT authentication
-- AI resume analysis with Gemini-based baseline flow
-- Custom model inference endpoint integration for interview insights
-- LiveKit self-hosted meeting flow replacing public Jitsi rooms
-- Interview session persistence:
-  - server-side assistant session records
-  - transcript entry persistence
-  - meeting event audit trail
-  - interrupted session recovery prompt
-- Dashboard visualization for:
-  - hiring funnel
-  - AI score distribution
-  - interview decision distribution
-- Analysis history endpoint for preserving evidence across repeated runs
+## AI-driven interview workflow (enforced)
 
-## Stack
+1. **Audio -> STT text**
+   - Frontend captures audio and sends chunks to speech API.
+   - Backend validates and normalizes transcript text before downstream AI processing.
 
-- Desktop shell: Electron
-- Frontend: React, TypeScript, React Router, Tailwind-style utility classes
-- Backend: FastAPI, SQLAlchemy, Pydantic
-- Online interview: LiveKit
-- AI services:
-  - Gemini API for resume analysis baseline
-  - Custom REST model endpoint for interview insight inference
-- Database:
-  - SQLite for demo/local mode
-  - PostgreSQL supported via DATABASE_URL
+2. **RAG retrieval (Vector context)**
+   - Backend retrieves top relevant CheatSheet chunks via vector endpoint if configured.
+   - If no external vector service is configured, local vector-like similarity fallback is used.
 
-## Workspace Structure
+3. **AI coaching generation**
+   - Prompt and generation logic are isolated from STT logic.
+   - API returns two required coaching outputs:
+     - `bufferStatement`
+     - `structuredTalkingPoints` (exact 3-step structure)
 
-- [src/renderer/src/pages](src/renderer/src/pages): main UI pages
-- [src/renderer/src/features/interviewAssistant](src/renderer/src/features/interviewAssistant): transcript, draft, and recovery logic
-- [src/renderer/src/features/meeting](src/renderer/src/features/meeting): LiveKit meeting panel
-- [backend/app/routers](backend/app/routers): API routes
-- [backend/app/services](backend/app/services): Gemini, custom model, LiveKit service logic
-- [backend/app/models.py](backend/app/models.py): database models
-- [backend/app/schemas.py](backend/app/schemas.py): API contracts
+4. **Three-column UI rendering**
+   - Column 1: Conversation + STT controls
+   - Column 2: AI coaching (`bufferStatement` + `structuredTalkingPoints`)
+   - Column 3: Retrieved CheatSheets
 
-## Local Setup
+## Quick start
 
-### 1. Install frontend dependencies
+### 1) Install frontend dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Create backend environment
+### 2) Create Python virtual environment
 
-Windows PowerShell:
+PowerShell:
 
 ```powershell
 python -m venv backend/.venv
 backend/.venv/Scripts/pip install -r backend/requirements.txt
 ```
 
-### 3. Configure backend environment variables
+### 3) Configure backend environment
 
-Copy [backend/env.example](backend/env.example) to `backend/.env` and fill in the values you actually use.
+Copy `backend/env.example` -> `backend/.env` and fill values.
 
-Minimum required for local demo:
+Required baseline:
 
 ```env
 DATABASE_URL=sqlite:///./app.db
-AUTH_SECRET_KEY=replace-with-a-long-random-secret
+AUTH_SECRET_KEY=replace-with-long-secret
 GEMINI_API_KEY=...
-LIVEKIT_URL=wss://your-livekit-host
+LIVEKIT_URL=...
 LIVEKIT_API_KEY=...
 LIVEKIT_API_SECRET=...
+AZURE_SPEECH_KEY=...
+AZURE_SPEECH_REGION=eastasia
 ```
 
-Optional custom interview model:
+Optional RAG vector endpoint:
 
 ```env
-CUSTOM_MODEL_ENDPOINT=https://your-model-service.example.com/inference/interview
-CUSTOM_MODEL_API_KEY=...
-CUSTOM_MODEL_AUTH_HEADER=Authorization
-CUSTOM_MODEL_AUTH_SCHEME=Bearer
-CUSTOM_MODEL_TIMEOUT_SECONDS=20
-CUSTOM_MODEL_NAME=custom-interview-v1
+VECTOR_STORE_ENDPOINT=https://your-vector-service/search
+VECTOR_STORE_API_KEY=...
+VECTOR_STORE_TIMEOUT_SECONDS=8
+INTERVIEW_ASSISTANT_TOP_K=3
 ```
 
-### 4. Start backend
+### 4) Run backend
 
 ```powershell
 backend/.venv/Scripts/python -m uvicorn app.main:app --app-dir backend --reload --port 8000
 ```
 
-### 5. Start Electron app
+### 5) Run desktop app
 
 ```bash
 npm run dev
 ```
 
-### 6. Validate types
+### 6) Typecheck frontend
 
 ```bash
 npm run typecheck
 ```
 
-## Demo Flow
+## Azure STT benchmark (latency + quality diagnostics)
 
-Recommended competition demo script:
+Script: `backend/scripts/benchmark_azure_stt.py`
 
-1. Create or select a job.
-2. Import/select a resume.
-3. Open AI analysis and show the matching result.
-4. Enter the online interview room.
-5. Show transcript growth, keyword extraction, and notes generation.
-6. Trigger interview insight inference.
-7. Apply AI recommendation back into rating, decision, and notes.
-8. Re-open the meeting page and show recoverable session evidence.
+What it tests:
+- `speech_recognition_language`
+- profanity filtering options
+- `SpeechServiceConnection_InitialSilenceTimeoutMs`
+- **Single Utterance** vs **Continuous Recognition**
+- phrase-list impact for technical terms (`RAG`, `MCP`, `Vector DB`)
+- cancellation and no-match diagnostics
 
-## Interview Session Persistence
+Example:
 
-The online interview flow now records more than just final notes.
+```powershell
+backend/.venv/Scripts/python backend/scripts/benchmark_azure_stt.py ^
+  --audio-file .\sample-interview.wav ^
+  --languages en-US,zh-TW ^
+  --profanity-options Masked,Raw,Removed ^
+  --initial-silence-ms 1500,3000,5000 ^
+  --phrase-terms "RAG,MCP,Vector DB" ^
+  --reference-text "your expected transcript" ^
+  --output-json azure_stt_benchmark_report.json
+```
 
-Persisted server-side:
+Interpretation guidance:
+- If cancellations/no-match cluster around short timeout values, increase initial silence timeout.
+- If technical keywords are repeatedly mistranscribed, enable phrase list and evaluate Custom Speech endpoint.
+- Prefer continuous mode for long candidate answers; use single utterance for short-turn Q&A.
 
-- interview assistant session metadata
-- transcript entries
-- meeting events such as session start, connection, sync, error, and end
-- latest notes snapshot and partial transcript text
+## Lean directory structure (proposed)
 
-This closes the earlier gap where interrupted interview data only lived in browser localStorage.
+```text
+backend/
+  app/
+    core/
+    routers/
+    services/
+  scripts/
+  requirements.txt
+  env.example
 
-## Analysis History
+src/
+  main/
+  preload/
+  renderer/
+    src/
+      api/
+      features/
+      pages/
 
-The system now exposes history records for AI analysis runs so repeated analyses are not just presentation-only. This helps support:
+resources/
+build/
+README.md
+package.json
+```
 
-- model comparison
-- prompt iteration evidence
-- competition presentation of iterative improvement
+## Cleanup recommendations
 
-Related route:
+### Delete or archive (likely redundant/non-essential)
+- `SPEECH_IMPLEMENTATION_SUMMARY.md`
+- `SPEECH_INTEGRATION_GUIDE.md`
+- `SPEECH_QUICK_REFERENCE.md`
+- `SPEECH_INTEGRATION_EXAMPLES.tsx` (not source-mounted in app runtime)
 
-- `GET /api/v1/ai-analyses/history`
+Reason: Speech guidance is now consolidated into this README and service code.
 
-## Important Config Notes
+### Keep but review for archival
+- `class-capsule-v3/` (keep only if actively used in demos; otherwise move to `docs/archive/`)
+- `backend/README.md` (can be replaced with a one-line pointer to root README)
 
-- LiveKit must be configured before the meeting page can join a room.
-- SpeechRecognition is browser/runtime dependent; manual notes remain available even if live speech transcription is unavailable.
-- SQLite is acceptable for demo mode, but PostgreSQL is recommended for multi-user or higher concurrency usage.
+### Ensure ignored in git
+- `.venv/` (root virtualenv)
+- `backend/.venv/`
+- `azure_stt_benchmark_report*.json`
 
-## Recommended Next Steps
+## API endpoints used by interview assistant
 
-- Add role-based access control for admin/interviewer/reviewer separation.
-- Add a dedicated analysis history page with side-by-side comparison UI.
-- Move transcript sync and AI inference to background jobs/websocket streams for heavier workloads.
-- Add production database migrations instead of relying only on `create_all` for schema evolution.
+- `POST /api/v1/speech/transcribe`
+- `POST /api/v1/speech/transcribe-bytes`
+- `GET /api/v1/speech/status`
+- `POST /api/v1/ai-analyses/interview-insights`
+
+## Notes for maintainers
+
+- Keep STT processing and LLM prompt logic separated by module boundaries.
+- Prefer async I/O on all network/model boundaries.
+- Treat fallback outputs as guarded behavior, not primary production logic.
+- For production-grade RAG quality, connect a real vector DB service and domain-specific embeddings.
