@@ -275,7 +275,23 @@ class InterviewOut(InterviewBase):
   job_title: str | None = None
   department: str | None = None
   candidate_name: str | None = None
+  meeting_hash: str | None = None
   model_config = ConfigDict(from_attributes=True, populate_by_name=True, alias_generator=_to_camel)
+
+
+class CandidateMeetingTokenCreate(APIModel):
+  meeting_hash: str
+  candidate_name: str
+
+
+class CandidateMeetingTokenOut(APIModel):
+  room_name: str
+  ws_url: str
+  token: str
+  participant_identity: str
+  participant_display_name: str
+  interview_id: int
+  meeting_hash: str
 
 
 class AuthRegister(APIModel):

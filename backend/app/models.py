@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import uuid
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.sqlite import JSON
@@ -133,6 +134,7 @@ class Interview(Base):
   interview_round: Mapped[str] = mapped_column(String(40), nullable=False, default='')
   interviewer: Mapped[str] = mapped_column(String(120), nullable=False, default='')
   meeting_link: Mapped[str] = mapped_column(String(400), nullable=False, default='')
+  meeting_hash: Mapped[str] = mapped_column(String(36), nullable=False, default=lambda: str(uuid.uuid4()), unique=True, index=True)
   location: Mapped[str] = mapped_column(String(200), nullable=False, default='')
 
   notes: Mapped[str] = mapped_column(Text, nullable=False, default='')

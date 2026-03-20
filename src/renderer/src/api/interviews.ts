@@ -1,5 +1,5 @@
 import { request } from './http'
-import type { Interview, InterviewAssistantSession, InterviewMeetingToken, InterviewTranscriptEntry } from './types'
+import type { Interview, InterviewAssistantSession, InterviewMeetingToken, CandidateMeetingToken, InterviewTranscriptEntry } from './types'
 
 export type InterviewCreate = {
   jobId: number
@@ -50,6 +50,13 @@ export function createInterviewMeetingToken(data: {
   participantName?: string
 }): Promise<InterviewMeetingToken> {
   return request<InterviewMeetingToken>('/interviews/meeting-token', { method: 'POST', body: data })
+}
+
+export function createCandidateMeetingToken(data: {
+  meetingHash: string
+  candidateName: string
+}): Promise<CandidateMeetingToken> {
+  return request<CandidateMeetingToken>('/interviews/candidate-meeting-token', { method: 'POST', body: data })
 }
 
 export function getLatestInterviewAssistantSession(interviewId: number): Promise<InterviewAssistantSession | null> {

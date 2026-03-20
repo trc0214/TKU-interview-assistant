@@ -48,6 +48,7 @@ export function InterviewDetailPage() {
 
   const [item, setItem] = useState<Interview | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [copySuccess, setCopySuccess] = useState<boolean>(false)
 
   useEffect(() => {
     let cancelled = false
@@ -73,6 +74,18 @@ export function InterviewDetailPage() {
       cancelled = true
     }
   }, [numericId])
+
+  const handleCopyCandidateLink = async () => {
+    if (!item?.meetingHash) return
+    const candidateLink = `${window.location.origin}/meeting?hash=${item.meetingHash}`
+    try {
+      await navigator.clipboard.writeText(candidateLink)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy link:', err)
+    }
+  }
 
   if (!item) {
     return (
@@ -165,6 +178,20 @@ export function InterviewDetailPage() {
                 )}
               </dd>
             </div>
+            {item.meetingHash ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">候選人連結</dt>
+                <dd className="min-w-0">
+                  <button
+                    type="button"
+                    onClick={handleCopyCandidateLink}
+                    className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    {copySuccess ? '✓ 已複製' : '複製連結'}
+                  </button>
+                </dd>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-3">
               <dt className="text-slate-500">評分</dt>
               <dd className="font-medium text-slate-900">{item.rating ?? '—'}</dd>

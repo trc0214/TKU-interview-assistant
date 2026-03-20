@@ -8,6 +8,8 @@ from app.core.config import settings
 from app.deps import get_current_user
 from app.db import get_db
 from app.schemas import (
+  CandidateMeetingTokenCreate,
+  CandidateMeetingTokenOut,
   InterviewAssistantSessionEnd,
   InterviewAssistantSessionOut,
   InterviewAssistantSessionStart,
@@ -19,7 +21,7 @@ from app.schemas import (
   InterviewTranscriptEntryOut,
   InterviewUpdate,
 )
-from app.services.livekit import issue_meeting_token
+from app.services.livekit import issue_meeting_token, issue_candidate_meeting_token
 
 
 router = APIRouter(prefix='/interviews', tags=['interviews'])
@@ -121,6 +123,30 @@ def create_interview_meeting_token(
     room_name=room_name,
     current_user=current_user,
     participant_name=(data.participant_name or '').strip() or None,
+  )
+
+
+@router.post('/candidate-meeting-token', response_model=CandidateMeetingTokenOut)
+def create_candidate_meeting_token(
+  data: CandidateMeetingTokenCreate,
+  db: Session = Depends(get_db),
+):
+  """为候选人生成会议 token，无需身份验证"""
+  if not settings.livekit_url or not settings.livekit_api_key or not settings.livekit_api_secret:
+    raise HTTPException(status_code=503, detail='LiveKit is not configured')
+
+  # 通过 meeting_hash 查找 Interview
+  interview = db.query(models.Interview).filter(models.Interview.meeting_hash == data.meeting_hash).first()
+  if not interview:
+    raise HTTPException(status_code=404, detail='Meeting hash not found')
+
+  room_name = f'interview-room-{interview.id}'
+
+  return issue_candidate_meeting_token(
+    room_name=room_name,
+    candidate_name=data.candidate_name,
+    interview_id=interview.id,
+    meeting_hash=data.meeting_hash,
   )
 
 

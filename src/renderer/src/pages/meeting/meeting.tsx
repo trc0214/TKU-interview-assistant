@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useLang } from '../../i18n/useLang'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../../auth/AuthContext'
 import { inferInterviewInsights } from '../../api/aiAnalyses'
 import {
   createInterviewMeetingToken,
+  createCandidateMeetingToken,
   endInterviewAssistantSession,
   getInterview,
   getLatestInterviewAssistantSession,
@@ -48,23 +51,31 @@ function isLiveKitDnsTurnFailure(message: string): boolean {
   )
 }
 
-function getMeetingDiagnosticHint(message: string | null): string | null {
+function getMeetingDiagnosticHint(message: string | null, localizedHint: string): string | null {
   if (!message) return null
   if (!isLiveKitDnsTurnFailure(message)) return null
 
-  return '偵測到 LiveKit TURN / DNS 連線異常。請檢查 VPN、防火牆與 DNS 設定，並確認網路允許 *.livekit.cloud 與 *.host.livekit.cloud 的連線。'
+  return localizedHint
 }
 
 export function MeetingPage(): ReactElement {
+  const lang = useLang()
+  const { user } = useAuth()
   const [searchParams] = useSearchParams()
+  
+  // 支持 interviewId 或 hash 參數
   const interviewIdParam = Number(searchParams.get('interviewId'))
   const interviewId = Number.isFinite(interviewIdParam) ? interviewIdParam : undefined
+  const meetingHash = searchParams.get('hash') || undefined
+  const isCandidateMode = Boolean(meetingHash && !user)
+  
   const roomName = searchParams.get('room') || buildRoomName(interviewId)
 
-  const recruiterQuestion =
-    'How do you approach product growth when you notice your key metrics are declining?'
+  const recruiterQuestion = lang.sampleRecruiterQuestion
 
   const [cheatQuery, setCheatQuery] = useState('')
+  const [candidateName, setCandidateName] = useState('')
+  const [candidateNameSubmitted, setCandidateNameSubmitted] = useState(!isCandidateMode)
 
   const [isMeetingStarted, setIsMeetingStarted] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -96,19 +107,19 @@ export function MeetingPage(): ReactElement {
 
     return [
       {
-        title: 'RAG System Design',
-        situation: 'Use query rewrite, vector retrieval, and grounded synthesis with measurable outcomes.',
+        title: lang.cheatFallbackTitle1,
+        situation: lang.cheatFallbackBody1,
       },
       {
-        title: 'MCP Integration',
-        situation: 'Explain capability discovery, tool safety, and policy-governed invocation patterns.',
+        title: lang.cheatFallbackTitle2,
+        situation: lang.cheatFallbackBody2,
       },
       {
-        title: 'Vector DB Trade-offs',
-        situation: 'Cover index strategy, latency/recall balance, and metadata filtering for precision.',
+        title: lang.cheatFallbackTitle3,
+        situation: lang.cheatFallbackBody3,
       },
     ]
-  }, [insight?.retrievedCheatsheets])
+  }, [insight?.retrievedCheatsheets, lang.cheatFallbackBody1, lang.cheatFallbackBody2, lang.cheatFallbackBody3, lang.cheatFallbackTitle1, lang.cheatFallbackTitle2, lang.cheatFallbackTitle3])
 
   const filteredCheatSheets = useMemo(() => {
     const query = cheatQuery.trim().toLowerCase()
@@ -208,15 +219,18 @@ export function MeetingPage(): ReactElement {
 
   const canSaveToInterview = Boolean(interviewId)
 
-  const meetingDiagnosticHint = useMemo(() => getMeetingDiagnosticHint(meetingError), [meetingError])
+  const meetingDiagnosticHint = useMemo(
+    () => getMeetingDiagnosticHint(meetingError, lang.meetingDiagnosticHint),
+    [meetingError, lang.meetingDiagnosticHint],
+  )
 
   const showRecoveryPrompt = !dismissedRecovery && !assistant.hasSessionContent && Boolean(recoverableServerSession || recoverableLocalDraft)
 
-  async function pushAssistantSync(options?: {
+  const pushAssistantSync = useCallback(async (options?: {
     eventType?: string
     eventPayload?: Record<string, unknown>
     meetingConnectedOverride?: boolean
-  }): Promise<void> {
+  }): Promise<void> => {
     if (!interviewId || !assistantSession || syncingRef.current) return
 
     const pendingEntries = assistant.transcriptEntries.filter((entry) => !syncedEntryIdsRef.current.has(entry.id))
@@ -253,7 +267,7 @@ export function MeetingPage(): ReactElement {
     } finally {
       syncingRef.current = false
     }
-  }
+  }, [assistant.notes, assistant.partialText, assistant.transcriptEntries, assistantSession, interviewId, meetingConnected])
 
   useEffect(() => {
     if (!interviewId || !assistantSession?.id) return
@@ -265,7 +279,7 @@ export function MeetingPage(): ReactElement {
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [assistant.partialText, assistant.notes, assistant.transcriptEntries, assistantSession?.id, interviewId, meetingConnected])
+  }, [assistantSession?.id, interviewId, pushAssistantSync])
 
   async function handleJoinMeeting(): Promise<void> {
     try {
@@ -273,6 +287,20 @@ export function MeetingPage(): ReactElement {
       setMeetingError(null)
       setMeetingConnected(false)
 
+      // 候選人模式：使用 meeting_hash 獲取 token
+      if (isCandidateMode && meetingHash) {
+        const session = await createCandidateMeetingToken({
+          meetingHash,
+          candidateName: candidateName.trim() || '面試者',
+        })
+
+        setMeetingToken(session.token)
+        setMeetingServerUrl(session.wsUrl)
+        setIsMeetingStarted(true)
+        return
+      }
+
+      // HR/面試官模式：需要登入，使用 interview_id
       const session = await createInterviewMeetingToken({
         interviewId,
         roomName,
@@ -345,7 +373,7 @@ export function MeetingPage(): ReactElement {
       })
 
       setInterview(updated)
-      setSaveMessage('已同步到面試紀錄')
+      setSaveMessage(lang.meetingSaved)
       assistant.persistDraft()
       await pushAssistantSync({ eventType: 'manual_save', eventPayload: { source: 'notes' } })
     } catch (error: unknown) {
@@ -401,21 +429,21 @@ export function MeetingPage(): ReactElement {
     }
 
     const aiDecisionSection = [
-      '## AI Decision Support',
-      `- Matching Score: ${insight.matchingScore}`,
-      `- Communication Score: ${insight.communicationScore}`,
-      `- Technical Depth Score: ${insight.technicalDepthScore}`,
-      `- Confidence: ${insight.confidence}`,
-      `- Recommendation: ${insight.recommendation}`,
+      `## ${lang.aiDecision}`,
+      `- ${lang.matchingScore}: ${insight.matchingScore}`,
+      `- ${lang.communicationScore}: ${insight.communicationScore}`,
+      `- ${lang.technicalDepthScore}: ${insight.technicalDepthScore}`,
+      `- ${lang.confidence}: ${insight.confidence}`,
+      `- ${lang.recommendation}: ${insight.recommendation}`,
       '',
-      '### Summary',
-      insight.summary || 'N/A',
+      `### ${lang.summary}`,
+      insight.summary || lang.none,
       '',
-      '### Risk Flags',
-      ...(insight.riskFlags.length ? insight.riskFlags.map((item) => `- ${item}`) : ['- None']),
+      `### ${lang.riskFlags}`,
+      ...(insight.riskFlags.length ? insight.riskFlags.map((item) => `- ${item}`) : [`- ${lang.none}`]),
       '',
-      '### Follow-up Questions',
-      ...(insight.followUpQuestions.length ? insight.followUpQuestions.map((item) => `- ${item}`) : ['- None']),
+      `### ${lang.followUp}`,
+      ...(insight.followUpQuestions.length ? insight.followUpQuestions.map((item) => `- ${item}`) : [`- ${lang.none}`]),
       '',
     ].join('\n')
 
@@ -436,7 +464,7 @@ export function MeetingPage(): ReactElement {
       })
 
       setInterview(updated)
-      setSaveMessage('已套用 AI 建議並同步到面試紀錄')
+      setSaveMessage(lang.meetingInsightApplied)
       assistant.persistDraft()
       await pushAssistantSync({ eventType: 'ai_insight_applied', eventPayload: { recommendation: insight.recommendation } })
     } catch (error: unknown) {
@@ -466,16 +494,16 @@ export function MeetingPage(): ReactElement {
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">線上面試助理</h1>
+            <h1 className="text-xl font-semibold text-slate-900">{lang.meetingTitle}</h1>
             <p className="mt-1 text-sm text-slate-600">
               {interview
-                ? `${interview.candidateName ?? `resume-${interview.resumeId}`} / ${interview.jobTitle ?? `job-${interview.jobId}`}`
-                : '未綁定特定面試，可作為臨時會議紀錄使用。'}
+                ? `${interview.candidateName ?? `${lang.meetingResumeFallback}-${interview.resumeId}`} / ${interview.jobTitle ?? `${lang.meetingJobFallback}-${interview.jobId}`}`
+                : lang.meetingUnbound}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Room: {roomName}</p>
-            {loading ? <p className="mt-2 text-xs text-slate-500">載入面試資料中…</p> : null}
-            {loadError ? <p className="mt-2 text-xs text-rose-600">{loadError}</p> : null}
-            {syncError ? <p className="mt-2 text-xs text-amber-700">{syncError}</p> : null}
+            <p className="mt-1 text-xs text-slate-500">{lang.meetingRoom}：{roomName}</p>
+            {loading ? <p className="mt-2 text-xs text-slate-500">{lang.meetingLoading}</p> : null}
+            {loadError ? <p className="mt-2 text-xs text-rose-600">{loadError || lang.meetingError}</p> : null}
+            {syncError ? <p className="mt-2 text-xs text-amber-700">{syncError || lang.meetingSyncError}</p> : null}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -483,7 +511,7 @@ export function MeetingPage(): ReactElement {
               to="/interviews"
               className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              返回面試管理
+              {lang.meetingBack}
             </Link>
 
             {canSaveToInterview ? (
@@ -493,7 +521,7 @@ export function MeetingPage(): ReactElement {
                 onClick={handleSaveInterviewNotes}
                 className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {saving ? '同步中…' : '同步到面試紀錄'}
+                {saving ? lang.meetingSaving : lang.meetingSave}
               </button>
             ) : null}
           </div>
@@ -504,8 +532,8 @@ export function MeetingPage(): ReactElement {
 
       {showRecoveryPrompt ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <div className="font-medium">偵測到未完成的面試草稿</div>
-          <p className="mt-1 text-xs text-amber-800">可從後端 session 或本機草稿恢復，避免中斷後資料只留在瀏覽器。</p>
+          <div className="font-medium">{lang.meetingRecovery}</div>
+          <p className="mt-1 text-xs text-amber-800">{lang.meetingRecoveryDesc}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {recoverableServerSession ? (
               <button
@@ -513,7 +541,7 @@ export function MeetingPage(): ReactElement {
                 onClick={handleRestoreServerDraft}
                 className="rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800"
               >
-                從伺服器草稿恢復
+                {lang.meetingRecoveryServer}
               </button>
             ) : null}
             {recoverableLocalDraft ? (
@@ -522,7 +550,7 @@ export function MeetingPage(): ReactElement {
                 onClick={handleRestoreLocalDraft}
                 className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
-                從本機草稿恢復
+                {lang.meetingRecoveryLocal}
               </button>
             ) : null}
             <button
@@ -530,7 +558,7 @@ export function MeetingPage(): ReactElement {
               onClick={() => setDismissedRecovery(true)}
               className="rounded-md border border-transparent px-3 py-2 text-xs font-medium text-slate-600 hover:text-slate-900"
             >
-              稍後處理
+              {lang.meetingRecoveryLater}
             </button>
           </div>
         </div>
@@ -541,10 +569,10 @@ export function MeetingPage(): ReactElement {
           <div className="rounded-lg border border-slate-200 bg-white p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-slate-900">Interview Conversation</h2>
-                <p className="mt-0.5 text-xs text-slate-500">Room: {roomName}</p>
+                <h2 className="text-sm font-semibold text-slate-900">{lang.meetingConversation}</h2>
+                <p className="mt-0.5 text-xs text-slate-500">{lang.meetingRoom}：{roomName}</p>
               </div>
-              <div className="text-xs text-slate-500">{meetingConnected ? 'Connected' : isMeetingStarted ? 'Connecting…' : 'Not started'}</div>
+              <div className="text-xs text-slate-500">{meetingConnected ? lang.meetingConnected : isMeetingStarted ? lang.meetingConnecting : lang.meetingNotStarted}</div>
             </div>
 
             <div className="mt-3">
@@ -552,7 +580,7 @@ export function MeetingPage(): ReactElement {
                 <div className="overflow-hidden rounded-md border border-slate-200 bg-slate-950">
                   <div className="relative flex h-[360px] items-center justify-center bg-slate-950">
                     <div className="rounded-md border border-slate-800 bg-slate-900/30 px-3 py-2 text-xs text-slate-200">
-                      Video conference preview
+                      {lang.meetingPreview}
                     </div>
 
                     <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-800 bg-slate-900/40 px-3 py-2 text-xs text-slate-200">
@@ -584,23 +612,56 @@ export function MeetingPage(): ReactElement {
                         {meetingDiagnosticHint}
                       </p>
                     ) : null}
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs text-slate-300">Start the meeting when you are ready.</p>
-                      <button
-                        type="button"
-                        onClick={handleJoinMeeting}
-                        disabled={isJoining || loading}
-                        className="rounded-md bg-white px-3 py-2 text-xs font-medium text-slate-900 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isJoining ? 'Starting…' : 'Join'}
-                      </button>
-                    </div>
+                    
+                    {!candidateNameSubmitted && isCandidateMode ? (
+                      <div className="space-y-2">
+                        <label className="block text-xs font-medium text-slate-300">
+                          {lang.meetingCandidateName || '請輸入您的名字：'}
+                        </label>
+                        <input
+                          type="text"
+                          value={candidateName}
+                          onChange={(e) => setCandidateName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && candidateName.trim()) {
+                              setCandidateNameSubmitted(true)
+                            }
+                          }}
+                          placeholder={lang.meetingCandidateNamePlaceholder || '例如：John Doe'}
+                          className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:border-slate-500 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (candidateName.trim()) {
+                              setCandidateNameSubmitted(true)
+                            }
+                          }}
+                          disabled={!candidateName.trim()}
+                          className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {lang.meetingNext || '繼續'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs text-slate-300">{lang.meetingReadyToStart}</p>
+                        <button
+                          type="button"
+                          onClick={handleJoinMeeting}
+                          disabled={isJoining || loading}
+                          className="rounded-md bg-white px-3 py-2 text-xs font-medium text-slate-900 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isJoining ? lang.meetingStarting : lang.meetingJoin}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : meetingToken && meetingServerUrl ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                    <span>{meetingConnected ? 'LiveKit Connected' : 'LiveKit Connecting…'}</span>
+                    <span>{meetingConnected ? lang.meetingConnected : lang.meetingConnecting}</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -609,7 +670,7 @@ export function MeetingPage(): ReactElement {
                       }}
                       className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                     >
-                      End
+                      {lang.meetingEnd}
                     </button>
                   </div>
 
@@ -647,7 +708,7 @@ export function MeetingPage(): ReactElement {
                 </div>
               ) : (
                 <div className="flex h-[360px] items-center justify-center rounded-md border border-dashed border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                  Unable to establish LiveKit connection.
+                  {lang.meetingUnable}
                 </div>
               )}
             </div>
@@ -655,8 +716,8 @@ export function MeetingPage(): ReactElement {
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="flex items-start justify-between gap-2">
-              <div className="text-xs font-semibold text-slate-900">Recruiter</div>
-              <div className="text-[11px] text-slate-500">Question</div>
+              <div className="text-xs font-semibold text-slate-900">{lang.recruiter}</div>
+              <div className="text-[11px] text-slate-500">{lang.recruiterQuestion}</div>
             </div>
             <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
               {recruiterQuestion}
@@ -665,11 +726,11 @@ export function MeetingPage(): ReactElement {
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="flex items-start justify-between gap-2">
-              <div className="text-xs font-semibold text-slate-900">You</div>
-              <div className="text-[11px] text-slate-500">Status</div>
+              <div className="text-xs font-semibold text-slate-900">{lang.you}</div>
+              <div className="text-[11px] text-slate-500">{lang.youStatus}</div>
             </div>
             <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-800">
-              {assistant.isListening ? '...You are talking...' : '...You are talking...'}
+              {lang.youTalking}
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
@@ -679,7 +740,7 @@ export function MeetingPage(): ReactElement {
                 onClick={assistant.startListening}
                 className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Start transcription
+                {lang.youStart}
               </button>
               <button
                 type="button"
@@ -687,12 +748,12 @@ export function MeetingPage(): ReactElement {
                 onClick={assistant.stopListening}
                 className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Stop
+                {lang.youStop}
               </button>
             </div>
             {assistant.error ? <p className="mt-2 text-xs text-rose-600">{assistant.error}</p> : null}
             {!assistant.isSupported ? (
-              <p className="mt-2 text-xs text-amber-700">Speech recognition is not supported in this environment.</p>
+              <p className="mt-2 text-xs text-amber-700">{lang.youNotSupported}</p>
             ) : null}
           </div>
         </section>
@@ -700,37 +761,37 @@ export function MeetingPage(): ReactElement {
         <section className="space-y-4">
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">Answer Suggestion</h2>
-              <div className="text-xs text-slate-500">Content helper</div>
+              <h2 className="text-sm font-semibold text-slate-900">{lang.answerSuggestion}</h2>
+              <div className="text-xs text-slate-500">{lang.answerHelper}</div>
             </div>
 
             <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">Question</div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">{lang.recruiterQuestion}</div>
               <div className="mt-2 text-sm text-slate-800">{recruiterQuestion}</div>
             </div>
 
             <div className="mt-3 rounded-md border border-slate-200 bg-white p-3">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                Say this to buy you some time!
+                {lang.buyTimeLabel}
               </div>
-              <div className="mt-2 text-sm text-slate-800">{insight?.bufferStatement || 'Run AI Interview Insight to generate a buffer statement.'}</div>
+              <div className="mt-2 text-sm text-slate-800">{insight?.bufferStatement || lang.bufferStatementFallback}</div>
             </div>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">Answer Formulation</h2>
-              <div className="text-xs text-slate-500">Talking Points</div>
+              <h2 className="text-sm font-semibold text-slate-900">{lang.answerFormulation}</h2>
+              <div className="text-xs text-slate-500">{lang.talkingPoints}</div>
             </div>
 
-            {insightLoading ? <div className="mt-3 text-sm text-slate-600">Generating AI talking points…</div> : null}
+            {insightLoading ? <div className="mt-3 text-sm text-slate-600">{lang.generating}</div> : null}
             {insightError ? <div className="mt-3 text-sm text-rose-600">{insightError}</div> : null}
 
             <ol className="mt-3 space-y-3 text-sm text-slate-800">
               {(insight?.structuredTalkingPoints?.length ? insight.structuredTalkingPoints : [
-                'Step 1 — Clarify the problem and success metric.',
-                'Step 2 — Explain technical approach with trade-offs.',
-                'Step 3 — Close with outcome and validation plan.',
+                lang.talkingPointFallback1,
+                lang.talkingPointFallback2,
+                lang.talkingPointFallback3,
               ]).map((point, index) => (
                 <li key={`${index}-${point}`} className="rounded-md border border-slate-200 bg-slate-50 p-3">
                   <div className="font-semibold text-slate-900">{index + 1}. {point}</div>
@@ -745,7 +806,7 @@ export function MeetingPage(): ReactElement {
                 disabled={insightLoading || !assistant.transcriptText.trim()}
                 className="rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {insightLoading ? 'Generating…' : 'Run AI Interview Insight'}
+                {insightLoading ? lang.generating : lang.aiInsight}
               </button>
               <button
                 type="button"
@@ -753,7 +814,7 @@ export function MeetingPage(): ReactElement {
                 disabled={!insight || saving || !canSaveToInterview}
                 className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Apply to Interview Record
+                {lang.aiInsightApply}
               </button>
             </div>
           </div>
@@ -762,7 +823,7 @@ export function MeetingPage(): ReactElement {
         <section className="space-y-4">
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">CheatSheets</h2>
+              <h2 className="text-sm font-semibold text-slate-900">{lang.cheatSheets}</h2>
               <div className="flex items-center gap-2 text-slate-500">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
@@ -773,22 +834,22 @@ export function MeetingPage(): ReactElement {
                 </svg>
               </div>
             </div>
-            <p className="mt-1 text-xs text-slate-500">Quick reference during the interview.</p>
+            <p className="mt-1 text-xs text-slate-500">{lang.cheatQuickRef}</p>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between gap-2">
               <label className="text-xs font-semibold text-slate-900" htmlFor="cheat-search">
-                Search
+                {lang.cheatSearch}
               </label>
-              <div className="text-xs text-slate-500">{filteredCheatSheets.length} items</div>
+              <div className="text-xs text-slate-500">{filteredCheatSheets.length} {lang.cheatItems}</div>
             </div>
 
             <input
               id="cheat-search"
               value={cheatQuery}
               onChange={(event) => setCheatQuery(event.target.value)}
-              placeholder="Search CheatSheets"
+              placeholder={lang.cheatSearch}
               className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200"
             />
 
@@ -798,13 +859,13 @@ export function MeetingPage(): ReactElement {
                   {filteredCheatSheets.map((item) => (
                     <li key={item.title} className="p-3">
                       <div className="text-sm font-semibold text-slate-900">{item.title}</div>
-                      <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Situation</div>
+                      <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{lang.situation}</div>
                       <div className="mt-1 text-sm text-slate-700">{item.situation}</div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <div className="p-3 text-sm text-slate-600">No matches.</div>
+                <div className="p-3 text-sm text-slate-600">{lang.cheatNoMatch}</div>
               )}
             </div>
           </div>

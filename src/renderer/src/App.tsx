@@ -17,50 +17,53 @@ import { InterviewDetailPage } from './pages/interviews/InterviewDetail'
 import { NotFoundPage } from './pages/NotFound'
 import { LoginPage } from './pages/auth/LoginPage'
 import { MeetingPage } from './pages/meeting/meeting'
+import { LanguageProvider } from './i18n/LanguageProvider'
 
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
+      <LanguageProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
 
-          <Route
-            element={
-              <RequireAuth>
-                <AppShell />
-              </RequireAuth>
-            }
-          >
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route
+              element={
+                <RequireAuth>
+                  <AppShell />
+                </RequireAuth>
+              }
+            >
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
 
-            <Route path="/jobs" element={<JobsListPage />} />
-            <Route path="/jobs/new" element={<JobFormPage mode="create" />} />
-            <Route path="/jobs/:jobId" element={<JobDetailPage />} />
-            <Route path="/jobs/:jobId/edit" element={<JobFormPage mode="edit" />} />
+              <Route path="/jobs" element={<JobsListPage />} />
+              <Route path="/jobs/new" element={<JobFormPage mode="create" />} />
+              <Route path="/jobs/:jobId" element={<JobDetailPage />} />
+              <Route path="/jobs/:jobId/edit" element={<JobFormPage mode="edit" />} />
 
-            <Route path="/resumes" element={<ResumesListPage />} />
-            <Route path="/resumes/new" element={<ResumeFormPage mode="create" />} />
-            <Route path="/resumes/:resumeId" element={<ResumeDetailPage />} />
-            <Route path="/resumes/:resumeId/edit" element={<ResumeFormPage mode="edit" />} />
+              <Route path="/resumes" element={<ResumesListPage />} />
+              <Route path="/resumes/new" element={<ResumeFormPage mode="create" />} />
+              <Route path="/resumes/:resumeId" element={<ResumeDetailPage />} />
+              <Route path="/resumes/:resumeId/edit" element={<ResumeFormPage mode="edit" />} />
 
-            <Route path="/interviews" element={<InterviewsListPage />} />
-            <Route path="/interviews/new" element={<InterviewFormPage mode="create" />} />
-            <Route path="/interviews/:interviewId" element={<InterviewDetailPage />} />
-            <Route path="/interviews/:interviewId/edit" element={<InterviewFormPage mode="edit" />} />
+              <Route path="/interviews" element={<InterviewsListPage />} />
+              <Route path="/interviews/new" element={<InterviewFormPage mode="create" />} />
+              <Route path="/interviews/:interviewId" element={<InterviewDetailPage />} />
+              <Route path="/interviews/:interviewId/edit" element={<InterviewFormPage mode="edit" />} />
 
-            <Route path="/ai-analysis" element={<AiAnalysisPage />} />
-            <Route path="/ai-analysis/:resumeId" element={<AiAnalysisPage />} />
+              <Route path="/ai-analysis" element={<AiAnalysisPage />} />
+              <Route path="/ai-analysis/:resumeId" element={<AiAnalysisPage />} />
 
-            <Route path="/meeting" element={<MeetingPage />} />
+              <Route path="/meeting" element={<MeetingPage />} />
 
-            <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
 
-            <Route path="*" element={<NotFoundPage />} />
-          </Route>
-        </Routes>
-      </AuthProvider>
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </LanguageProvider>
     </BrowserRouter>
   )
 }

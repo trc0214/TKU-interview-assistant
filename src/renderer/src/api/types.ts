@@ -100,6 +100,16 @@ export type InterviewMeetingToken = {
   participantDisplayName: string
 }
 
+export type CandidateMeetingToken = {
+  roomName: string
+  wsUrl: string
+  token: string
+  participantIdentity: string
+  participantDisplayName: string
+  interviewId: number
+  meetingHash: string
+}
+
 export type InterviewTranscriptEntry = {
   id: string
   text: string
@@ -144,6 +154,7 @@ export type Interview = {
   interviewRound: string
   interviewer: string
   meetingLink: string
+  meetingHash?: string
   location: string
 
   notes: string

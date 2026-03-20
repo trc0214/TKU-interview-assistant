@@ -1,22 +1,24 @@
 import { NavLink } from 'react-router-dom'
-
-const navItems = [
-  { label: 'Dashboard', to: '/dashboard' },
-  { label: '職缺管理', to: '/jobs' },
-  { label: '履歷管理', to: '/resumes' },
-  { label: '面試管理', to: '/interviews' },
-  { label: 'AI 分析結果', to: '/ai-analysis' },
-  { label: '線上面試', to: '/meeting' },
-  { label: '系統設定', to: '/settings' },
-]
+import { useLang } from '../i18n/useLang'
 
 export function Sidebar() {
+  const t = useLang()
+  const navItems = [
+    { label: t.navDashboard, to: '/dashboard' },
+    { label: t.navJobs, to: '/jobs' },
+    { label: t.navResumes, to: '/resumes' },
+    { label: t.navInterviews, to: '/interviews' },
+    { label: t.navAiAnalysis, to: '/ai-analysis' },
+    { label: t.navMeeting, to: '/meeting' },
+    { label: t.navSettings, to: '/settings' },
+  ]
+
   return (
     <aside className="hidden w-60 shrink-0 border-r border-slate-200 bg-white md:block">
       <div className="flex h-14 items-center px-4">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-slate-900">AI 面試輔助系統</div>
-          <div className="truncate text-xs text-slate-500">HR Dashboard</div>
+          <div className="truncate text-sm font-semibold text-slate-900">{t.topbarTitle}</div>
+          <div className="truncate text-xs text-slate-500">{t.sidebarSubtitle}</div>
         </div>
       </div>
       <nav className="px-2 py-2">
