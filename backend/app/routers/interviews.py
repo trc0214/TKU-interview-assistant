@@ -114,7 +114,7 @@ def create_interview_meeting_token(
     interview = crud.get_interview(db, data.interview_id)
     if not interview:
       raise HTTPException(status_code=404, detail='Interview not found')
-    room_name = room_name or f'interview-room-{interview.id}'
+    room_name = f'interview-room-{interview.id}'
 
   if not room_name:
     raise HTTPException(status_code=400, detail='room_name is required when interview_id is not provided')

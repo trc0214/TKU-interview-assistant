@@ -10,7 +10,7 @@ database_url = settings.resolved_database_url
 
 engine = create_engine(
   database_url,
-  echo=True,
+  echo=settings.sqlalchemy_echo,
   connect_args={
     'check_same_thread': False,
     'timeout': 30,

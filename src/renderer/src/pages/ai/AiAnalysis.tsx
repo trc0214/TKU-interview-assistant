@@ -6,6 +6,26 @@ import { createAnalysis, listAnalyses, listAnalysisHistory } from '../../api/aiA
 import { getResume } from '../../api/resumes'
 import type { AIAnalysis, AIAnalysisHistory, Resume } from '../../api/types'
 
+type SortMode = 'date_desc' | 'date_asc' | 'score_desc' | 'score_asc'
+
+function sortByMode<T extends { createdAt: string; overallScore: number }>(items: T[], mode: SortMode): T[] {
+  const sorted = [...items]
+  if (mode === 'date_desc') {
+    sorted.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+    return sorted
+  }
+  if (mode === 'date_asc') {
+    sorted.sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
+    return sorted
+  }
+  if (mode === 'score_desc') {
+    sorted.sort((left, right) => right.overallScore - left.overallScore || Date.parse(right.createdAt) - Date.parse(left.createdAt))
+    return sorted
+  }
+  sorted.sort((left, right) => left.overallScore - right.overallScore || Date.parse(left.createdAt) - Date.parse(right.createdAt))
+  return sorted
+}
+
 function scoreToTone(score: number) {
   if (score >= 85) return 'success' as const
   if (score >= 70) return 'warning' as const
@@ -23,6 +43,8 @@ export function AiAnalysisPage() {
   const [busy, setBusy] = useState(false)
   const [extraConditions, setExtraConditions] = useState('')
   const [rebusy, setRebusy] = useState(false)
+  const [listSortMode, setListSortMode] = useState<SortMode>('date_desc')
+  const [historySortMode, setHistorySortMode] = useState<SortMode>('date_desc')
 
   useEffect(() => {
     let cancelled = false
@@ -129,8 +151,9 @@ export function AiAnalysisPage() {
   }, [analysis])
 
   const comparison = useMemo(() => {
-    const latest = history[0] ?? null
-    const previous = history[1] ?? null
+    const byDateDesc = sortByMode(history, 'date_desc')
+    const latest = byDateDesc[0] ?? null
+    const previous = byDateDesc[1] ?? null
     if (!latest || !previous) return null
     return {
       latest,
@@ -141,6 +164,9 @@ export function AiAnalysisPage() {
       problemSolvingDelta: latest.problemSolvingScore - previous.problemSolvingScore,
     }
   }, [history])
+
+  const sortedAnalyses = useMemo(() => sortByMode(analyses ?? [], listSortMode), [analyses, listSortMode])
+  const sortedHistory = useMemo(() => sortByMode(history, historySortMode), [history, historySortMode])
 
   function formatDelta(value: number) {
     if (value === 0) return '持平'
@@ -156,6 +182,21 @@ export function AiAnalysisPage() {
           {error ? <div className="mt-2 text-xs text-rose-600">{error}</div> : null}
         </div>
 
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-slate-600" htmlFor="analysis-sort-mode">排序</label>
+          <select
+            id="analysis-sort-mode"
+            value={listSortMode}
+            onChange={(event) => setListSortMode(event.target.value as SortMode)}
+            className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700"
+          >
+            <option value="date_desc">日期（新 → 舊）</option>
+            <option value="date_asc">日期（舊 → 新）</option>
+            <option value="score_desc">分數（高 → 低）</option>
+            <option value="score_asc">分數（低 → 高）</option>
+          </select>
+        </div>
+
         <div className="rounded-lg border border-slate-200 bg-white">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -169,7 +210,7 @@ export function AiAnalysisPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {(analyses ?? []).map((a) => (
+                {sortedAnalyses.map((a) => (
                   <tr key={a.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-slate-700">{new Date(a.createdAt).toLocaleString()}</td>
                     <td className="px-4 py-3 text-slate-700">{a.resumeId}</td>
@@ -187,7 +228,7 @@ export function AiAnalysisPage() {
                     </td>
                   </tr>
                 ))}
-                {!analyses?.length ? (
+                {!sortedAnalyses.length ? (
                   <tr>
                     <td className="px-4 py-6 text-sm text-slate-600" colSpan={5}>
                       尚無分析紀錄。請到「履歷管理」建立履歷後，在履歷詳情進入分析頁。
@@ -390,12 +431,26 @@ export function AiAnalysisPage() {
 
         <section className="rounded-lg border border-slate-200 bg-white p-6">
           <div className="text-sm font-semibold text-slate-900">歷史時間軸</div>
+          <div className="mt-3 flex items-center gap-2">
+            <label className="text-xs font-medium text-slate-600" htmlFor="history-sort-mode">排序</label>
+            <select
+              id="history-sort-mode"
+              value={historySortMode}
+              onChange={(event) => setHistorySortMode(event.target.value as SortMode)}
+              className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700"
+            >
+              <option value="date_desc">日期（新 → 舊）</option>
+              <option value="date_asc">日期（舊 → 新）</option>
+              <option value="score_desc">分數（高 → 低）</option>
+              <option value="score_asc">分數（低 → 高）</option>
+            </select>
+          </div>
           <div className="mt-4 space-y-3">
-            {history.length ? (
-              history.map((item, index) => (
+            {sortedHistory.length ? (
+              sortedHistory.map((item, index) => (
                 <div key={item.id} className="rounded-lg border border-slate-200 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-medium text-slate-900">{index === 0 ? '最新分析' : `歷史紀錄 ${history.length - index}`}</div>
+                    <div className="text-sm font-medium text-slate-900">{index === 0 ? '目前排序首筆' : `歷史紀錄 ${sortedHistory.length - index}`}</div>
                     <Badge label={`${item.overallScore}%`} tone={scoreToTone(item.overallScore)} />
                   </div>
                   <div className="mt-2 text-xs text-slate-500">{new Date(item.createdAt).toLocaleString()}</div>

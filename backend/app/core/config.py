@@ -19,6 +19,7 @@ class Settings(BaseSettings):
   )
 
   database_url: str | None = None
+  sqlalchemy_echo: bool = False
 
   auth_secret_key: str | None = None
   auth_algorithm: str = 'HS256'

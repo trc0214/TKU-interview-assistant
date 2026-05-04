@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import secrets
+
 from livekit import api
 
 from app.core.config import settings
@@ -9,7 +11,8 @@ from app.schemas import InterviewMeetingTokenOut, CandidateMeetingTokenOut
 def issue_meeting_token(*, room_name: str, current_user, participant_name: str | None = None) -> InterviewMeetingTokenOut:
   user_id = getattr(current_user, 'id', 'unknown')
   username = getattr(current_user, 'username', 'interviewer')
-  participant_identity = f'interviewer-{user_id}'
+  identity_suffix = secrets.token_hex(4)
+  participant_identity = f'interviewer-{user_id}-{identity_suffix}'
   participant_display_name = participant_name or username
 
   token = (
@@ -41,7 +44,8 @@ def issue_candidate_meeting_token(
   *, room_name: str, candidate_name: str, interview_id: int, meeting_hash: str
 ) -> CandidateMeetingTokenOut:
   """為候選人生成 meeting token（不需要身份驗證）"""
-  participant_identity = f'candidate-{interview_id}-{meeting_hash[:8]}'
+  identity_suffix = secrets.token_hex(4)
+  participant_identity = f'candidate-{interview_id}-{meeting_hash[:8]}-{identity_suffix}'
   participant_display_name = candidate_name.strip() or '候選人'
 
   token = (

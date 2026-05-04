@@ -5,6 +5,7 @@ import {
   buildInterviewNotes,
   buildTranscriptEntry,
   collectTopTerms,
+  sanitizeTranscriptText,
   type TranscriptEntry
 } from './transcript'
 
@@ -19,6 +20,8 @@ const LOW_VOLUME_RMS_THRESHOLD = 0.01
 const MIN_TRANSCRIPT_TEXT_LENGTH = 2
 const MERGE_WINDOW_MS = 8000
 const SHORT_FRAGMENT_LENGTH = 18
+const HIGH_SIMILARITY_THRESHOLD = 0.88
+const FORCE_UPLOAD_SILENT_CHUNKS = 3
 
 type AudioIssue = 'low-volume' | 'high-noise' | 'clipping' | null
 
@@ -55,6 +58,33 @@ function resolveRecorderMimeType(): string | undefined {
   }
 
   return undefined
+}
+
+function normalizeForComparison(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[，。！？,.!?、;；:："'`~^*()\[\]{}<>\/\\|_-]+/g, '')
+    .trim()
+}
+
+function calculateTextSimilarity(left: string, right: string): number {
+  if (!left || !right) return 0
+  if (left === right) return 1
+
+  const leftSet = new Set(left.split('').filter(Boolean))
+  const rightSet = new Set(right.split('').filter(Boolean))
+  if (!leftSet.size || !rightSet.size) return 0
+
+  let intersection = 0
+  leftSet.forEach((char) => {
+    if (rightSet.has(char)) {
+      intersection += 1
+    }
+  })
+
+  const union = new Set([...leftSet, ...rightSet]).size
+  return union ? intersection / union : 0
 }
 
 type InitParams = {
@@ -115,6 +145,7 @@ export function useInterviewAssistant({
   const pendingSpeechBytesRef = useRef(0)
   const uploadQueueRef = useRef<Promise<void>>(Promise.resolve())
   const noSpeechChunkCountRef = useRef(0)
+  const silentChunkStreakRef = useRef(0)
   const speechLikelyRef = useRef(false)
   const recentSpeechMsRef = useRef(0)
   const lowVolumeMsRef = useRef(0)
@@ -334,6 +365,7 @@ export function useInterviewAssistant({
     pendingSpeechBytesRef.current = 0
     uploadQueueRef.current = Promise.resolve()
     noSpeechChunkCountRef.current = 0
+    silentChunkStreakRef.current = 0
     setIsListening(false)
     setPartialText('')
   }, [stopAudioAnalysis])
@@ -376,6 +408,7 @@ export function useInterviewAssistant({
       carryOverChunkRef.current = null
       pendingSpeechChunksRef.current = []
       pendingSpeechBytesRef.current = 0
+      silentChunkStreakRef.current = 0
 
       const isLikelyWebm = (mimeType || '').includes('webm')
       const isLikelyMp4 = (mimeType || '').includes('mp4')
@@ -398,7 +431,7 @@ export function useInterviewAssistant({
       }
 
       const appendTranscriptText = (incomingText: string) => {
-        const text = incomingText.trim()
+        const text = sanitizeTranscriptText(incomingText)
         if (text.length < MIN_TRANSCRIPT_TEXT_LENGTH) {
           return
         }
@@ -406,17 +439,30 @@ export function useInterviewAssistant({
         setTranscriptEntries((previous) => {
           const last = previous[previous.length - 1]
           if (!last) {
-            return [...previous, buildTranscriptEntry(text)]
+            const entry = buildTranscriptEntry(text)
+            if (!entry.text) {
+              return previous
+            }
+            return [...previous, entry]
           }
 
+          const normalizedText = normalizeForComparison(text)
+          const normalizedLast = normalizeForComparison(last.text)
+          const similarity = calculateTextSimilarity(normalizedText, normalizedLast)
+
           const isDuplicate =
-            text === last.text ||
-            last.text.includes(text) ||
-            (text.includes(last.text) && text.length - last.text.length <= 10)
+            normalizedText === normalizedLast ||
+            normalizedLast.includes(normalizedText) ||
+            (normalizedText.includes(normalizedLast) && normalizedText.length - normalizedLast.length <= 12) ||
+            similarity >= HIGH_SIMILARITY_THRESHOLD
 
           if (isDuplicate) {
             if (text.length > last.text.length) {
-              return [...previous.slice(0, -1), buildTranscriptEntry(text, last.createdAt)]
+              const replacement = buildTranscriptEntry(text, last.createdAt)
+              if (!replacement.text) {
+                return previous
+              }
+              return [...previous.slice(0, -1), replacement]
             }
             return previous
           }
@@ -427,11 +473,22 @@ export function useInterviewAssistant({
 
           if (shouldMerge) {
             const separator = /^[，。！？,.!?]/.test(text) ? '' : ' '
-            const mergedText = `${last.text}${separator}${text}`.trim()
-            return [...previous.slice(0, -1), buildTranscriptEntry(mergedText, last.createdAt)]
+            const mergedText = sanitizeTranscriptText(`${last.text}${separator}${text}`)
+            if (!mergedText) {
+              return previous
+            }
+            const mergedEntry = buildTranscriptEntry(mergedText, last.createdAt)
+            if (!mergedEntry.text) {
+              return previous
+            }
+            return [...previous.slice(0, -1), mergedEntry]
           }
 
-          return [...previous, buildTranscriptEntry(text)]
+          const nextEntry = buildTranscriptEntry(text)
+          if (!nextEntry.text) {
+            return previous
+          }
+          return [...previous, nextEntry]
         })
 
         setUpdatedAt(Date.now())
@@ -522,12 +579,31 @@ export function useInterviewAssistant({
 
           const withinSpeechWindow = speechLikelyRef.current || recentSpeechMsRef.current > 0
           if (!withinSpeechWindow) {
+            silentChunkStreakRef.current += 1
             if (pendingSpeechChunksRef.current.length) {
               await flushPendingChunks()
             }
+
+            if (silentChunkStreakRef.current >= FORCE_UPLOAD_SILENT_CHUNKS) {
+              if (preRollChunkRef.current && pendingSpeechChunksRef.current.length === 0) {
+                pendingSpeechChunksRef.current.push(preRollChunkRef.current)
+                pendingSpeechBytesRef.current += preRollChunkRef.current.size
+                preRollChunkRef.current = null
+              }
+
+              pendingSpeechChunksRef.current.push(normalizedChunk)
+              pendingSpeechBytesRef.current += normalizedChunk.size
+
+              await flushPendingChunks()
+              silentChunkStreakRef.current = 0
+              return
+            }
+
             preRollChunkRef.current = normalizedChunk
             return
           }
+
+          silentChunkStreakRef.current = 0
 
           if (preRollChunkRef.current && pendingSpeechChunksRef.current.length === 0) {
             pendingSpeechChunksRef.current.push(preRollChunkRef.current)
@@ -618,6 +694,7 @@ export function useInterviewAssistant({
         carryOverChunkRef.current = null
         pendingSpeechChunksRef.current = []
         pendingSpeechBytesRef.current = 0
+        silentChunkStreakRef.current = 0
         if (!isStoppingRef.current) {
           setIsListening(false)
         }

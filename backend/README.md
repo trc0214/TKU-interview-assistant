@@ -28,3 +28,4 @@ API docs:
 - `GEMINI_API_KEY`: required to call Gemini.
   - If missing, API will return a deterministic **mock** analysis (demo-friendly).
 - `CORS_ORIGINS`: comma-separated origins (default `http://localhost:5173`).
+- `SQLALCHEMY_ECHO`: whether to print SQL statements in server logs (`false` by default).
