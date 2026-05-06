@@ -3,6 +3,7 @@
 ## Installation & Setup
 
 ### Backend Setup
+
 ```bash
 cd backend
 pip install -r requirements.txt
@@ -13,6 +14,7 @@ python -m uvicorn app.main:app --port 8000
 ### Environment Variables
 
 **backend/.env (required for Azure)**
+
 ```env
 AZURE_SPEECH_KEY=your_key_here
 AZURE_SPEECH_REGION=eastasia
@@ -23,6 +25,7 @@ WHISPER_DEVICE=cpu
 ```
 
 **src/renderer/.env.local (optional, not recommended for production)**
+
 ```env
 VITE_AZURE_SPEECH_REGION=eastasia
 VITE_ENABLE_AZURE_SPEECH=true
@@ -31,17 +34,20 @@ VITE_ENABLE_AZURE_SPEECH=true
 ## API Endpoints
 
 ### Check Service Status
+
 ```bash
 curl http://localhost:8000/api/v1/speech/status
 ```
 
 ### Transcribe Audio File
+
 ```bash
 curl -X POST -F "file=@audio.wav" -F "language=zh-TW" \
      http://localhost:8000/api/v1/speech/transcribe
 ```
 
 ### Response Example
+
 ```json
 {
   "text": "您好，我是候選人",
@@ -56,6 +62,7 @@ curl -X POST -F "file=@audio.wav" -F "language=zh-TW" \
 ## Frontend Usage
 
 ### React Hook
+
 ```typescript
 import { useAzureSpeech } from '@/hooks/useAzureSpeech';
 
@@ -80,6 +87,7 @@ function MyComponent() {
 ```
 
 ### Component Integration
+
 ```typescript
 import SpeechRecognitionPanel from 'SPEECH_INTEGRATION_EXAMPLES.tsx';
 
@@ -136,6 +144,7 @@ src/renderer/
 ## Workflow Comparison
 
 ### Before (SpeechRecognition API)
+
 ```
 Browser SpeechRecognition
   ↓ (limited features, no fallback)
@@ -143,6 +152,7 @@ Manual transcription or nothing
 ```
 
 ### After (Azure + Whisper)
+
 ```
 ┌─ Azure Speech (Cloud)
 ├─ Whisper (Local Fallback)
@@ -152,16 +162,19 @@ Manual transcription or nothing
 ## Performance Tips
 
 ### Reduce Latency
+
 1. Use "base" Whisper model (not "large")
 2. Deploy in same region as users (Azure)
 3. Enable GPU (cuda) for Whisper if available
 
 ### Reduce Memory
+
 1. Use "tiny" Whisper model (74MB, 4GB RAM)
 2. Unload model when not needed: `service.unload_model()`
 3. Process audio in chunks
 
 ### Reduce Costs (if using Azure)
+
 1. Set up Whisper fallback for high-volume scenarios
 2. Use region-specific Azure endpoints
 3. Monitor quota usage in Azure Portal
@@ -169,6 +182,7 @@ Manual transcription or nothing
 ## Debugging
 
 ### Check Backend Availability
+
 ```bash
 # Service status
 curl http://localhost:8000/api/v1/speech/status | jq
@@ -179,13 +193,15 @@ curl http://localhost:8000/api/v1/speech/status | jq
 ```
 
 ### Check Frontend
+
 ```javascript
 // In browser console
-window.SpeechSDK  // Should be defined
+window.SpeechSDK // Should be defined
 // If undefined, Azure SDK CDN script failed to load
 ```
 
 ### Test Transcription
+
 ```python
 # In backend Python shell
 from app.services.unified_speech import get_speech_service
@@ -203,19 +219,23 @@ with open('sample.wav', 'rb') as f:
 ## Common Problems
 
 ### "Azure Speech SDK not loaded"
+
 - Check: `<script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>` in index.html
 - Check: CSP allows https://aka.ms
 
 ### "Microphone permission denied"
+
 - Grant in browser: Settings → Privacy → Microphone
 - Grant in OS: System Settings → Privacy & Security → Microphone
 
 ### "Quota exceeded"
+
 - Check Azure subscription (Azure Portal)
 - Enable Whisper fallback
 - Implement rate limiting
 
 ### "No transcription results"
+
 - Check language code (e.g., 'zh-TW' not 'Chinese')
 - Check audio quality (clear speech works better)
 - Check backend logs for errors

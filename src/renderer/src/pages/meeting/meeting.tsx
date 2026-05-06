@@ -11,10 +11,13 @@ import {
   getLatestInterviewAssistantSession,
   startInterviewAssistantSession,
   syncInterviewAssistantSession,
-  updateInterview,
+  updateInterview
 } from '../../api/interviews'
 import type { Interview, InterviewAssistantSession, InterviewInsight } from '../../api/types'
-import { type InterviewAssistantSnapshot, useInterviewAssistant } from '../../features/interviewAssistant'
+import {
+  type InterviewAssistantSnapshot,
+  useInterviewAssistant
+} from '../../features/interviewAssistant'
 import { loadDraft, type InterviewAssistantDraft } from '../../features/interviewAssistant/storage'
 import { LiveKitMeetingPanel } from '../../features/meeting/LiveKitMeetingPanel'
 
@@ -30,11 +33,11 @@ function toSnapshotFromServer(session: InterviewAssistantSession): InterviewAssi
       text: entry.text,
       createdAt: Date.parse(entry.createdAt),
       terms: entry.terms,
-      source: entry.source,
+      source: entry.source
     })),
     partialText: session.partialText,
     notes: session.notesSnapshot,
-    updatedAt: Date.parse(session.lastSeenAt),
+    updatedAt: Date.parse(session.lastSeenAt)
   }
 }
 
@@ -62,13 +65,13 @@ export function MeetingPage(): ReactElement {
   const lang = useLang()
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
-  
+
   // 支持 interviewId 或 hash 參數
   const interviewIdParam = Number(searchParams.get('interviewId'))
   const interviewId = Number.isFinite(interviewIdParam) ? interviewIdParam : undefined
   const meetingHash = searchParams.get('hash') || undefined
   const isCandidateMode = Boolean(meetingHash && !user)
-  
+
   const roomName = searchParams.get('room') || buildRoomName(interviewId)
 
   const recruiterQuestion = lang.sampleRecruiterQuestion
@@ -92,8 +95,10 @@ export function MeetingPage(): ReactElement {
   const [meetingToken, setMeetingToken] = useState<string | null>(null)
   const [meetingServerUrl, setMeetingServerUrl] = useState<string | null>(null)
   const [assistantSession, setAssistantSession] = useState<InterviewAssistantSession | null>(null)
-  const [recoverableServerSession, setRecoverableServerSession] = useState<InterviewAssistantSession | null>(null)
-  const [recoverableLocalDraft, setRecoverableLocalDraft] = useState<InterviewAssistantDraft | null>(null)
+  const [recoverableServerSession, setRecoverableServerSession] =
+    useState<InterviewAssistantSession | null>(null)
+  const [recoverableLocalDraft, setRecoverableLocalDraft] =
+    useState<InterviewAssistantDraft | null>(null)
   const [dismissedRecovery, setDismissedRecovery] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
 
@@ -101,31 +106,40 @@ export function MeetingPage(): ReactElement {
     if (insight?.retrievedCheatsheets?.length) {
       return insight.retrievedCheatsheets.map((item) => ({
         title: item.title,
-        situation: item.content,
+        situation: item.content
       }))
     }
 
     return [
       {
         title: lang.cheatFallbackTitle1,
-        situation: lang.cheatFallbackBody1,
+        situation: lang.cheatFallbackBody1
       },
       {
         title: lang.cheatFallbackTitle2,
-        situation: lang.cheatFallbackBody2,
+        situation: lang.cheatFallbackBody2
       },
       {
         title: lang.cheatFallbackTitle3,
-        situation: lang.cheatFallbackBody3,
-      },
+        situation: lang.cheatFallbackBody3
+      }
     ]
-  }, [insight?.retrievedCheatsheets, lang.cheatFallbackBody1, lang.cheatFallbackBody2, lang.cheatFallbackBody3, lang.cheatFallbackTitle1, lang.cheatFallbackTitle2, lang.cheatFallbackTitle3])
+  }, [
+    insight?.retrievedCheatsheets,
+    lang.cheatFallbackBody1,
+    lang.cheatFallbackBody2,
+    lang.cheatFallbackBody3,
+    lang.cheatFallbackTitle1,
+    lang.cheatFallbackTitle2,
+    lang.cheatFallbackTitle3
+  ])
 
   const filteredCheatSheets = useMemo(() => {
     const query = cheatQuery.trim().toLowerCase()
     if (!query) return cheatSheets
     return cheatSheets.filter(
-      (item) => item.title.toLowerCase().includes(query) || item.situation.toLowerCase().includes(query),
+      (item) =>
+        item.title.toLowerCase().includes(query) || item.situation.toLowerCase().includes(query)
     )
   }, [cheatQuery, cheatSheets])
 
@@ -170,7 +184,7 @@ export function MeetingPage(): ReactElement {
   const assistant = useInterviewAssistant({
     interviewId,
     interviewer: interview?.interviewer,
-    candidateName: interview?.candidateName || '',
+    candidateName: interview?.candidateName || ''
   })
 
   const internalMeetingLink = interviewId
@@ -191,12 +205,17 @@ export function MeetingPage(): ReactElement {
       try {
         const [session, localDraft] = await Promise.all([
           getLatestInterviewAssistantSession(currentInterviewId),
-          Promise.resolve(loadDraft(currentInterviewId)),
+          Promise.resolve(loadDraft(currentInterviewId))
         ])
         if (cancelled) return
 
         setRecoverableLocalDraft(localDraft)
-        if (session && (session.transcriptEntries.length || session.notesSnapshot.trim() || session.partialText.trim())) {
+        if (
+          session &&
+          (session.transcriptEntries.length ||
+            session.notesSnapshot.trim() ||
+            session.partialText.trim())
+        ) {
           setRecoverableServerSession(session)
           setAssistantSession(session)
           syncedEntryIdsRef.current = new Set(session.transcriptEntries.map((entry) => entry.id))
@@ -221,53 +240,73 @@ export function MeetingPage(): ReactElement {
 
   const meetingDiagnosticHint = useMemo(
     () => getMeetingDiagnosticHint(meetingError, lang.meetingDiagnosticHint),
-    [meetingError, lang.meetingDiagnosticHint],
+    [meetingError, lang.meetingDiagnosticHint]
   )
 
-  const showRecoveryPrompt = !dismissedRecovery && !assistant.hasSessionContent && Boolean(recoverableServerSession || recoverableLocalDraft)
+  const showRecoveryPrompt =
+    !dismissedRecovery &&
+    !assistant.hasSessionContent &&
+    Boolean(recoverableServerSession || recoverableLocalDraft)
 
-  const pushAssistantSync = useCallback(async (options?: {
-    eventType?: string
-    eventPayload?: Record<string, unknown>
-    meetingConnectedOverride?: boolean
-  }): Promise<void> => {
-    if (!interviewId || !assistantSession || syncingRef.current) return
+  const pushAssistantSync = useCallback(
+    async (options?: {
+      eventType?: string
+      eventPayload?: Record<string, unknown>
+      meetingConnectedOverride?: boolean
+    }): Promise<void> => {
+      if (!interviewId || !assistantSession || syncingRef.current) return
 
-    const pendingEntries = assistant.transcriptEntries.filter((entry) => !syncedEntryIdsRef.current.has(entry.id))
-    if (!pendingEntries.length && !options?.eventType && !assistant.notes.trim() && !assistant.partialText.trim()) {
-      return
-    }
+      const pendingEntries = assistant.transcriptEntries.filter(
+        (entry) => !syncedEntryIdsRef.current.has(entry.id)
+      )
+      if (
+        !pendingEntries.length &&
+        !options?.eventType &&
+        !assistant.notes.trim() &&
+        !assistant.partialText.trim()
+      ) {
+        return
+      }
 
-    try {
-      syncingRef.current = true
-      const nextSession = await syncInterviewAssistantSession(interviewId, {
-        sessionId: assistantSession.id,
-        notes: assistant.notes,
-        partialText: assistant.partialText,
-        meetingConnected: options?.meetingConnectedOverride ?? meetingConnected,
-        transcriptEntries: pendingEntries.map((entry) => ({
-          id: entry.id,
-          text: entry.text,
-          createdAt: new Date(entry.createdAt).toISOString(),
-          terms: entry.terms,
-          source: 'speech',
+      try {
+        syncingRef.current = true
+        const nextSession = await syncInterviewAssistantSession(interviewId, {
           sessionId: assistantSession.id,
-        })),
-        eventType: options?.eventType,
-        eventPayload: options?.eventPayload,
-      })
+          notes: assistant.notes,
+          partialText: assistant.partialText,
+          meetingConnected: options?.meetingConnectedOverride ?? meetingConnected,
+          transcriptEntries: pendingEntries.map((entry) => ({
+            id: entry.id,
+            text: entry.text,
+            createdAt: new Date(entry.createdAt).toISOString(),
+            terms: entry.terms,
+            source: 'speech',
+            sessionId: assistantSession.id
+          })),
+          eventType: options?.eventType,
+          eventPayload: options?.eventPayload
+        })
 
-      pendingEntries.forEach((entry) => syncedEntryIdsRef.current.add(entry.id))
-      setAssistantSession(nextSession)
-      setRecoverableServerSession(nextSession)
-      setSyncError(null)
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : '同步面試草稿失敗'
-      setSyncError(message)
-    } finally {
-      syncingRef.current = false
-    }
-  }, [assistant.notes, assistant.partialText, assistant.transcriptEntries, assistantSession, interviewId, meetingConnected])
+        pendingEntries.forEach((entry) => syncedEntryIdsRef.current.add(entry.id))
+        setAssistantSession(nextSession)
+        setRecoverableServerSession(nextSession)
+        setSyncError(null)
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : '同步面試草稿失敗'
+        setSyncError(message)
+      } finally {
+        syncingRef.current = false
+      }
+    },
+    [
+      assistant.notes,
+      assistant.partialText,
+      assistant.transcriptEntries,
+      assistantSession,
+      interviewId,
+      meetingConnected
+    ]
+  )
 
   useEffect(() => {
     if (!interviewId || !assistantSession?.id) return
@@ -291,7 +330,7 @@ export function MeetingPage(): ReactElement {
       if (isCandidateMode && meetingHash) {
         const session = await createCandidateMeetingToken({
           meetingHash,
-          candidateName: candidateName.trim() || '面試者',
+          candidateName: candidateName.trim() || '面試者'
         })
 
         setMeetingToken(session.token)
@@ -304,7 +343,7 @@ export function MeetingPage(): ReactElement {
       const session = await createInterviewMeetingToken({
         interviewId,
         roomName,
-        participantName: interview?.interviewer || undefined,
+        participantName: interview?.interviewer || undefined
       })
 
       setMeetingToken(session.token)
@@ -314,11 +353,13 @@ export function MeetingPage(): ReactElement {
         const startedSession = await startInterviewAssistantSession(interviewId, {
           roomName,
           participantIdentity: session.participantIdentity,
-          participantDisplayName: session.participantDisplayName,
+          participantDisplayName: session.participantDisplayName
         })
         setAssistantSession(startedSession)
         setRecoverableServerSession(startedSession)
-        syncedEntryIdsRef.current = new Set(startedSession.transcriptEntries.map((entry) => entry.id))
+        syncedEntryIdsRef.current = new Set(
+          startedSession.transcriptEntries.map((entry) => entry.id)
+        )
       }
 
       setIsMeetingStarted(true)
@@ -333,7 +374,9 @@ export function MeetingPage(): ReactElement {
     }
   }
 
-  async function handleLeaveMeeting(reason: 'completed' | 'disconnected' | 'canceled'): Promise<void> {
+  async function handleLeaveMeeting(
+    reason: 'completed' | 'disconnected' | 'canceled'
+  ): Promise<void> {
     try {
       if (interviewId && assistantSession && !endingSessionRef.current) {
         endingSessionRef.current = true
@@ -341,7 +384,7 @@ export function MeetingPage(): ReactElement {
           sessionId: assistantSession.id,
           reason,
           notes: assistant.notes,
-          partialText: assistant.partialText,
+          partialText: assistant.partialText
         })
         setAssistantSession(ended)
         setRecoverableServerSession(ended)
@@ -369,7 +412,7 @@ export function MeetingPage(): ReactElement {
       const updated = await updateInterview(interviewId, {
         notes: nextNotes,
         meetingLink: interview.meetingLink || internalMeetingLink,
-        location: interview.location || 'online',
+        location: interview.location || 'online'
       })
 
       setInterview(updated)
@@ -406,8 +449,8 @@ export function MeetingPage(): ReactElement {
           isOnline: assistant.isOnline,
           meetingConnected,
           transcriptCount: assistant.transcriptEntries.length,
-          sessionId: assistantSession?.id,
-        },
+          sessionId: assistantSession?.id
+        }
       })
 
       setInsight(response)
@@ -425,7 +468,7 @@ export function MeetingPage(): ReactElement {
     const recommendationMap: Record<InterviewInsight['recommendation'], string> = {
       pass: 'pass',
       hold: 'hold',
-      reject: 'reject',
+      reject: 'reject'
     }
 
     const aiDecisionSection = [
@@ -440,11 +483,15 @@ export function MeetingPage(): ReactElement {
       insight.summary || lang.none,
       '',
       `### ${lang.riskFlags}`,
-      ...(insight.riskFlags.length ? insight.riskFlags.map((item) => `- ${item}`) : [`- ${lang.none}`]),
+      ...(insight.riskFlags.length
+        ? insight.riskFlags.map((item) => `- ${item}`)
+        : [`- ${lang.none}`]),
       '',
       `### ${lang.followUp}`,
-      ...(insight.followUpQuestions.length ? insight.followUpQuestions.map((item) => `- ${item}`) : [`- ${lang.none}`]),
-      '',
+      ...(insight.followUpQuestions.length
+        ? insight.followUpQuestions.map((item) => `- ${item}`)
+        : [`- ${lang.none}`]),
+      ''
     ].join('\n')
 
     const mergedNotes = [assistant.notes.trim(), aiDecisionSection].filter(Boolean).join('\n\n')
@@ -460,13 +507,16 @@ export function MeetingPage(): ReactElement {
         decision: recommendationMap[insight.recommendation],
         meetingLink: interview.meetingLink || internalMeetingLink,
         location: interview.location || 'online',
-        status: 'awaiting_review',
+        status: 'awaiting_review'
       })
 
       setInterview(updated)
       setSaveMessage(lang.meetingInsightApplied)
       assistant.persistDraft()
-      await pushAssistantSync({ eventType: 'ai_insight_applied', eventPayload: { recommendation: insight.recommendation } })
+      await pushAssistantSync({
+        eventType: 'ai_insight_applied',
+        eventPayload: { recommendation: insight.recommendation }
+      })
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : '套用 AI 建議失敗'
       setSaveMessage(message)
@@ -500,10 +550,16 @@ export function MeetingPage(): ReactElement {
                 ? `${interview.candidateName ?? `${lang.meetingResumeFallback}-${interview.resumeId}`} / ${interview.jobTitle ?? `${lang.meetingJobFallback}-${interview.jobId}`}`
                 : lang.meetingUnbound}
             </p>
-            <p className="mt-1 text-xs text-slate-500">{lang.meetingRoom}：{roomName}</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {lang.meetingRoom}：{roomName}
+            </p>
             {loading ? <p className="mt-2 text-xs text-slate-500">{lang.meetingLoading}</p> : null}
-            {loadError ? <p className="mt-2 text-xs text-rose-600">{loadError || lang.meetingError}</p> : null}
-            {syncError ? <p className="mt-2 text-xs text-amber-700">{syncError || lang.meetingSyncError}</p> : null}
+            {loadError ? (
+              <p className="mt-2 text-xs text-rose-600">{loadError || lang.meetingError}</p>
+            ) : null}
+            {syncError ? (
+              <p className="mt-2 text-xs text-amber-700">{syncError || lang.meetingSyncError}</p>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -570,9 +626,17 @@ export function MeetingPage(): ReactElement {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-slate-900">{lang.meetingConversation}</h2>
-                <p className="mt-0.5 text-xs text-slate-500">{lang.meetingRoom}：{roomName}</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {lang.meetingRoom}：{roomName}
+                </p>
               </div>
-              <div className="text-xs text-slate-500">{meetingConnected ? lang.meetingConnected : isMeetingStarted ? lang.meetingConnecting : lang.meetingNotStarted}</div>
+              <div className="text-xs text-slate-500">
+                {meetingConnected
+                  ? lang.meetingConnected
+                  : isMeetingStarted
+                    ? lang.meetingConnecting
+                    : lang.meetingNotStarted}
+              </div>
             </div>
 
             <div className="mt-3">
@@ -585,19 +649,37 @@ export function MeetingPage(): ReactElement {
 
                     <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-800 bg-slate-900/40 px-3 py-2 text-xs text-slate-200">
                       <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-800 bg-slate-950">
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <path d="M12 1v22" />
                           <path d="M5 8h14" />
                         </svg>
                       </span>
                       <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-800 bg-slate-950">
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <path d="M23 7l-7 5 7 5V7z" />
                           <path d="M1 5h15v14H1z" />
                         </svg>
                       </span>
                       <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-900/60 bg-rose-950/30">
-                        <svg viewBox="0 0 24 24" className="h-4 w-4 text-rose-200" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4 text-rose-200"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <path d="M22 2 2 22" />
                           <path d="M2 2l20 20" />
                         </svg>
@@ -612,7 +694,7 @@ export function MeetingPage(): ReactElement {
                         {meetingDiagnosticHint}
                       </p>
                     ) : null}
-                    
+
                     {!candidateNameSubmitted && isCandidateMode ? (
                       <div className="space-y-2">
                         <label className="block text-xs font-medium text-slate-300">
@@ -685,7 +767,7 @@ export function MeetingPage(): ReactElement {
                       void pushAssistantSync({
                         eventType: 'meeting_connected',
                         eventPayload: { roomName },
-                        meetingConnectedOverride: true,
+                        meetingConnectedOverride: true
                       })
                     }}
                     onDisconnected={() => {
@@ -701,7 +783,7 @@ export function MeetingPage(): ReactElement {
                       void pushAssistantSync({
                         eventType: 'meeting_error',
                         eventPayload: { message: error.message },
-                        meetingConnectedOverride: false,
+                        meetingConnectedOverride: false
                       })
                     }}
                   />
@@ -751,7 +833,9 @@ export function MeetingPage(): ReactElement {
                 {lang.youStop}
               </button>
             </div>
-            {assistant.error ? <p className="mt-2 text-xs text-rose-600">{assistant.error}</p> : null}
+            {assistant.error ? (
+              <p className="mt-2 text-xs text-rose-600">{assistant.error}</p>
+            ) : null}
             {!assistant.isSupported ? (
               <p className="mt-2 text-xs text-amber-700">{lang.youNotSupported}</p>
             ) : null}
@@ -766,7 +850,9 @@ export function MeetingPage(): ReactElement {
             </div>
 
             <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">{lang.recruiterQuestion}</div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                {lang.recruiterQuestion}
+              </div>
               <div className="mt-2 text-sm text-slate-800">{recruiterQuestion}</div>
             </div>
 
@@ -774,7 +860,9 @@ export function MeetingPage(): ReactElement {
               <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 {lang.buyTimeLabel}
               </div>
-              <div className="mt-2 text-sm text-slate-800">{insight?.bufferStatement || lang.bufferStatementFallback}</div>
+              <div className="mt-2 text-sm text-slate-800">
+                {insight?.bufferStatement || lang.bufferStatementFallback}
+              </div>
             </div>
           </div>
 
@@ -784,17 +872,27 @@ export function MeetingPage(): ReactElement {
               <div className="text-xs text-slate-500">{lang.talkingPoints}</div>
             </div>
 
-            {insightLoading ? <div className="mt-3 text-sm text-slate-600">{lang.generating}</div> : null}
+            {insightLoading ? (
+              <div className="mt-3 text-sm text-slate-600">{lang.generating}</div>
+            ) : null}
             {insightError ? <div className="mt-3 text-sm text-rose-600">{insightError}</div> : null}
 
             <ol className="mt-3 space-y-3 text-sm text-slate-800">
-              {(insight?.structuredTalkingPoints?.length ? insight.structuredTalkingPoints : [
-                lang.talkingPointFallback1,
-                lang.talkingPointFallback2,
-                lang.talkingPointFallback3,
-              ]).map((point, index) => (
-                <li key={`${index}-${point}`} className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                  <div className="font-semibold text-slate-900">{index + 1}. {point}</div>
+              {(insight?.structuredTalkingPoints?.length
+                ? insight.structuredTalkingPoints
+                : [
+                    lang.talkingPointFallback1,
+                    lang.talkingPointFallback2,
+                    lang.talkingPointFallback3
+                  ]
+              ).map((point, index) => (
+                <li
+                  key={`${index}-${point}`}
+                  className="rounded-md border border-slate-200 bg-slate-50 p-3"
+                >
+                  <div className="font-semibold text-slate-900">
+                    {index + 1}. {point}
+                  </div>
                 </li>
               ))}
             </ol>
@@ -825,11 +923,23 @@ export function MeetingPage(): ReactElement {
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-900">{lang.cheatSheets}</h2>
               <div className="flex items-center gap-2 text-slate-500">
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
                   <path d="M19.4 15a7.8 7.8 0 0 0 .1-6l2-1.5-2-3.5-2.4 1a8.4 8.4 0 0 0-5.2-2l-.5-2.6H9.6L9.1 3a8.4 8.4 0 0 0-5.2 2l-2.4-1-2 3.5 2 1.5a7.8 7.8 0 0 0 .1 6l-2 1.5 2 3.5 2.4-1a8.4 8.4 0 0 0 5.2 2l.5 2.6h4.8l.5-2.6a8.4 8.4 0 0 0 5.2-2l2.4 1 2-3.5-2-1.5Z" />
                 </svg>
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="m6 9 6 6 6-6" />
                 </svg>
               </div>
@@ -842,7 +952,9 @@ export function MeetingPage(): ReactElement {
               <label className="text-xs font-semibold text-slate-900" htmlFor="cheat-search">
                 {lang.cheatSearch}
               </label>
-              <div className="text-xs text-slate-500">{filteredCheatSheets.length} {lang.cheatItems}</div>
+              <div className="text-xs text-slate-500">
+                {filteredCheatSheets.length} {lang.cheatItems}
+              </div>
             </div>
 
             <input
@@ -859,7 +971,9 @@ export function MeetingPage(): ReactElement {
                   {filteredCheatSheets.map((item) => (
                     <li key={item.title} className="p-3">
                       <div className="text-sm font-semibold text-slate-900">{item.title}</div>
-                      <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{lang.situation}</div>
+                      <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {lang.situation}
+                      </div>
                       <div className="mt-1 text-sm text-slate-700">{item.situation}</div>
                     </li>
                   ))}

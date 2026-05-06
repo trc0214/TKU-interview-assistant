@@ -26,7 +26,7 @@ export function JobDetailPage() {
         setJob(data)
       } catch (e: any) {
         if (cancelled) return
-        setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
+        setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入失敗'))
         setJob(null)
       }
     }
@@ -83,7 +83,10 @@ export function JobDetailPage() {
               <div className="text-xs font-semibold text-slate-600">必要技能</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {job.requiredSkills.map((s) => (
-                  <span key={s} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                  <span
+                    key={s}
+                    className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                  >
                     {s}
                   </span>
                 ))}
@@ -93,7 +96,10 @@ export function JobDetailPage() {
               <div className="text-xs font-semibold text-slate-600">加分條件</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {job.niceToHave.map((s) => (
-                  <span key={s} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                  <span
+                    key={s}
+                    className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                  >
                     {s}
                   </span>
                 ))}
@@ -112,7 +118,10 @@ export function JobDetailPage() {
             <div className="flex justify-between gap-3">
               <dt className="text-slate-500">狀態</dt>
               <dd>
-                <Badge label={formatJobStatus(job.status)} tone={job.status === 'open' ? 'success' : 'default'} />
+                <Badge
+                  label={formatJobStatus(job.status)}
+                  tone={job.status === 'open' ? 'success' : 'default'}
+                />
               </dd>
             </div>
             <div className="flex justify-between gap-3">
@@ -134,11 +143,17 @@ export function JobDetailPage() {
             <div className="mt-2 space-y-2 text-sm text-slate-700">
               <div className="flex items-center justify-between">
                 <span>啟用 AI 履歷比對</span>
-                <Badge label={job.aiResumeMatchingEnabled ? '啟用' : '停用'} tone={job.aiResumeMatchingEnabled ? 'success' : 'default'} />
+                <Badge
+                  label={job.aiResumeMatchingEnabled ? '啟用' : '停用'}
+                  tone={job.aiResumeMatchingEnabled ? 'success' : 'default'}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <span>自動生成面試問題</span>
-                <Badge label={job.aiQuestionGenEnabled ? '啟用' : '停用'} tone={job.aiQuestionGenEnabled ? 'success' : 'default'} />
+                <Badge
+                  label={job.aiQuestionGenEnabled ? '啟用' : '停用'}
+                  tone={job.aiQuestionGenEnabled ? 'success' : 'default'}
+                />
               </div>
               <div className="mt-3 text-xs text-slate-500">AI 僅輔助，不取代人類決策</div>
             </div>

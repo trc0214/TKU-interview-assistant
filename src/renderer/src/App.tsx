@@ -50,7 +50,10 @@ export default function App() {
               <Route path="/interviews" element={<InterviewsListPage />} />
               <Route path="/interviews/new" element={<InterviewFormPage mode="create" />} />
               <Route path="/interviews/:interviewId" element={<InterviewDetailPage />} />
-              <Route path="/interviews/:interviewId/edit" element={<InterviewFormPage mode="edit" />} />
+              <Route
+                path="/interviews/:interviewId/edit"
+                element={<InterviewFormPage mode="edit" />}
+              />
 
               <Route path="/ai-analysis" element={<AiAnalysisPage />} />
               <Route path="/ai-analysis/:resumeId" element={<AiAnalysisPage />} />

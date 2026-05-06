@@ -16,7 +16,7 @@ export function JobsListPage() {
       const items = await listJobs()
       setJobs(items)
     } catch (e: any) {
-      setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
+      setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入失敗'))
       setJobs([])
     }
   }
@@ -66,7 +66,10 @@ export function JobsListPage() {
                     <div className="line-clamp-2">{job.requiredSkills.join('、')}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge label={formatJobStatus(job.status)} tone={job.status === 'open' ? 'success' : 'default'} />
+                    <Badge
+                      label={formatJobStatus(job.status)}
+                      tone={job.status === 'open' ? 'success' : 'default'}
+                    />
                   </td>
                   <td className="px-4 py-3 text-slate-700">{formatDate(job.createdAt)}</td>
                   <td className="px-4 py-3">
@@ -94,7 +97,9 @@ export function JobsListPage() {
                             await deleteJob(job.id)
                             await refresh()
                           } catch (e: any) {
-                            setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '刪除失敗')
+                            setError(
+                              e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '刪除失敗')
+                            )
                           } finally {
                             setBusyId(null)
                           }

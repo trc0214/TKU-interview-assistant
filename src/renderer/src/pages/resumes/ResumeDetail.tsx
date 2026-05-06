@@ -28,7 +28,7 @@ export function ResumeDetailPage() {
         setResume(data)
       } catch (e: any) {
         if (cancelled) return
-        setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
+        setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入失敗'))
         setResume(null)
       }
     }
@@ -44,7 +44,10 @@ export function ResumeDetailPage() {
         <div className="text-sm font-medium text-slate-900">找不到履歷</div>
         {error ? <div className="mt-2 text-sm text-rose-600">{error}</div> : null}
         <div className="mt-4">
-          <Link to="/resumes" className="text-sm text-slate-700 hover:text-slate-900 hover:underline">
+          <Link
+            to="/resumes"
+            className="text-sm text-slate-700 hover:text-slate-900 hover:underline"
+          >
             返回列表
           </Link>
         </div>
@@ -57,7 +60,9 @@ export function ResumeDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-xl font-semibold text-slate-900">履歷詳情</div>
-          <div className="mt-1 text-sm text-slate-600">{resume.candidateName} / {resume.appliedJobTitle}</div>
+          <div className="mt-1 text-sm text-slate-600">
+            {resume.candidateName} / {resume.appliedJobTitle}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
@@ -70,7 +75,12 @@ export function ResumeDetailPage() {
             type="button"
             disabled={deleting}
             onClick={() => {
-              if (!window.confirm(`確定要刪除 ${resume.candidateName} 的履歷嗎？此操作會一併移除相關分析與面試紀錄。`)) return
+              if (
+                !window.confirm(
+                  `確定要刪除 ${resume.candidateName} 的履歷嗎？此操作會一併移除相關分析與面試紀錄。`
+                )
+              )
+                return
               ;(async () => {
                 try {
                   setDeleting(true)
@@ -78,7 +88,7 @@ export function ResumeDetailPage() {
                   await deleteResume(resume.id)
                   navigate('/resumes')
                 } catch (e: any) {
-                  setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '刪除失敗')
+                  setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '刪除失敗'))
                 } finally {
                   setDeleting(false)
                 }
@@ -118,7 +128,13 @@ export function ResumeDetailPage() {
               <dd>
                 <Badge
                   label={formatResumeStatus(resume.status)}
-                  tone={resume.status === 'received' ? 'info' : resume.status === 'analyzed' ? 'warning' : 'success'}
+                  tone={
+                    resume.status === 'received'
+                      ? 'info'
+                      : resume.status === 'analyzed'
+                        ? 'warning'
+                        : 'success'
+                  }
                 />
               </dd>
             </div>
@@ -128,7 +144,10 @@ export function ResumeDetailPage() {
             <div className="text-sm font-semibold text-slate-900">技能清單</div>
             <div className="mt-3 flex flex-wrap gap-2">
               {resume.skills.map((s) => (
-                <span key={s} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                <span
+                  key={s}
+                  className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                >
                   {s}
                 </span>
               ))}
@@ -138,7 +157,9 @@ export function ResumeDetailPage() {
 
         <section className="rounded-lg border border-slate-200 bg-white p-6">
           <div className="text-sm font-semibold text-slate-900">履歷摘要（AI 分析摘要）</div>
-          <div className="mt-3 text-sm text-slate-700">{resume.aiSummary ?? '尚未產生 AI 分析摘要。'}</div>
+          <div className="mt-3 text-sm text-slate-700">
+            {resume.aiSummary ?? '尚未產生 AI 分析摘要。'}
+          </div>
 
           <div className="mt-6">
             <div className="text-sm font-semibold text-slate-900">與職缺的匹配重點</div>

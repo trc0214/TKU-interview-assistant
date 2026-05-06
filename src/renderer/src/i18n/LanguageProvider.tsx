@@ -20,11 +20,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = lang === 'zh' ? 'zh-TW' : 'en'
   }, [lang])
 
-  return (
-    <LanguageContext.Provider value={{ lang, setLang }}>
-      {children}
-    </LanguageContext.Provider>
-  )
+  return <LanguageContext.Provider value={{ lang, setLang }}>{children}</LanguageContext.Provider>
 }
 
 export function useLanguage() {

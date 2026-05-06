@@ -78,6 +78,14 @@ async def transcribe_audio(
             content_type=file.content_type,
         )
 
+        # Check if transcription failed
+        if result.error and not result.text:
+            # Only return 400 if there's an actual error (not just "no speech detected")
+            if "not available" in result.error.lower() or "configured" in result.error.lower():
+                raise HTTPException(status_code=503, detail=result.error)
+            elif "decode" in result.error.lower():
+                raise HTTPException(status_code=400, detail=f"Invalid audio format: {result.error}")
+
         return TranscriptResult(
             text=result.text,
             language=result.language,
@@ -129,6 +137,14 @@ async def transcribe_audio_bytes(
             filename=None,
             content_type=None,
         )
+
+        # Check if transcription failed
+        if result.error and not result.text:
+            # Only return 400 if there's an actual error (not just "no speech detected")
+            if "not available" in result.error.lower() or "configured" in result.error.lower():
+                raise HTTPException(status_code=503, detail=result.error)
+            elif "decode" in result.error.lower():
+                raise HTTPException(status_code=400, detail=f"Invalid audio format: {result.error}")
 
         return TranscriptResult(
             text=result.text,

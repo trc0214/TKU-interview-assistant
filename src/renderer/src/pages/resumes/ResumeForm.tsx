@@ -42,7 +42,7 @@ export function ResumeFormPage({ mode }: { mode: 'create' | 'edit' }) {
         setExisting(data)
       } catch (e: any) {
         if (cancelled) return
-        setLoadError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入履歷失敗')
+        setLoadError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入履歷失敗'))
         setExisting(null)
       }
     }
@@ -69,7 +69,7 @@ export function ResumeFormPage({ mode }: { mode: 'create' | 'edit' }) {
         }
       } catch (e: any) {
         if (cancelled) return
-        setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入職缺失敗')
+        setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入職缺失敗'))
       }
     }
     load()
@@ -91,7 +91,8 @@ export function ResumeFormPage({ mode }: { mode: 'create' | 'edit' }) {
   }, [seed])
 
   const pageTitle = mode === 'create' ? '新增履歷' : '編輯履歷'
-  const pageSubtitle = mode === 'create' ? '上傳 PDF 或貼上履歷文字並連結到職缺' : '更新履歷內容與應徵資訊'
+  const pageSubtitle =
+    mode === 'create' ? '上傳 PDF 或貼上履歷文字並連結到職缺' : '更新履歷內容與應徵資訊'
 
   return (
     <div className="space-y-4">
@@ -128,7 +129,7 @@ export function ResumeFormPage({ mode }: { mode: 'create' | 'edit' }) {
                 resumeText: resumeText.trim(),
                 education: education.trim(),
                 yearsExp,
-                skills,
+                skills
               }
 
               const saved =
@@ -136,12 +137,12 @@ export function ResumeFormPage({ mode }: { mode: 'create' | 'edit' }) {
                   ? await createResume(payload)
                   : await updateResume(numericId, {
                       ...payload,
-                      status: existing?.status ?? 'received',
+                      status: existing?.status ?? 'received'
                     })
 
               navigate(`/resumes/${saved.id}`)
             } catch (err: any) {
-              setError(err?.detail ? JSON.stringify(err.detail) : err?.message ?? '建立失敗')
+              setError(err?.detail ? JSON.stringify(err.detail) : (err?.message ?? '建立失敗'))
             } finally {
               setSaving(false)
             }
@@ -153,7 +154,9 @@ export function ResumeFormPage({ mode }: { mode: 'create' | 'edit' }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-slate-900">PDF 履歷上傳</div>
-                <div className="mt-1 text-xs text-slate-600">支援可選取文字的 PDF，系統會先擷取文字，再讓你補齊欄位後送出。</div>
+                <div className="mt-1 text-xs text-slate-600">
+                  支援可選取文字的 PDF，系統會先擷取文字，再讓你補齊欄位後送出。
+                </div>
               </div>
               {parsedFileName ? (
                 <div className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
@@ -179,7 +182,11 @@ export function ResumeFormPage({ mode }: { mode: 'create' | 'edit' }) {
                         setParsedFileName(parsed.filename)
                         setParsedPageCount(parsed.pageCount)
                       } catch (err: any) {
-                        setError(err?.detail ? JSON.stringify(err.detail) : err?.message ?? 'PDF 解析失敗')
+                        setError(
+                          err?.detail
+                            ? JSON.stringify(err.detail)
+                            : (err?.message ?? 'PDF 解析失敗')
+                        )
                       } finally {
                         setParsing(false)
                         event.target.value = ''
@@ -189,7 +196,9 @@ export function ResumeFormPage({ mode }: { mode: 'create' | 'edit' }) {
                 />
                 {parsing ? '解析中…' : '上傳 PDF 並解析'}
               </label>
-              <div className="text-xs text-slate-500">若 PDF 無法擷取文字，仍可改用下方文字區手動貼上內容。</div>
+              <div className="text-xs text-slate-500">
+                若 PDF 無法擷取文字，仍可改用下方文字區手動貼上內容。
+              </div>
             </div>
           </div>
 

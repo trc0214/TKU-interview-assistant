@@ -31,7 +31,7 @@ export function JobFormPage({ mode }: { mode: 'create' | 'edit' }) {
         setExisting(data)
       } catch (e: any) {
         if (cancelled) return
-        setLoadError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
+        setLoadError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入失敗'))
         setExisting(null)
       }
     }
@@ -48,10 +48,16 @@ export function JobFormPage({ mode }: { mode: 'create' | 'edit' }) {
   const [description, setDescription] = useState(seed?.description ?? '')
   const [requiredSkills, setRequiredSkills] = useState<string[]>(seed?.requiredSkills ?? [])
   const [niceToHave, setNiceToHave] = useState<string[]>(seed?.niceToHave ?? [])
-  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>((seed?.experienceLevel as any) ?? '2-3')
+  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>(
+    (seed?.experienceLevel as any) ?? '2-3'
+  )
   const [education, setEducation] = useState<Education>((seed?.education as any) ?? '大學')
-  const [aiResumeMatchingEnabled, setAiResumeMatchingEnabled] = useState(seed?.aiResumeMatchingEnabled ?? true)
-  const [aiQuestionGenEnabled, setAiQuestionGenEnabled] = useState(seed?.aiQuestionGenEnabled ?? true)
+  const [aiResumeMatchingEnabled, setAiResumeMatchingEnabled] = useState(
+    seed?.aiResumeMatchingEnabled ?? true
+  )
+  const [aiQuestionGenEnabled, setAiQuestionGenEnabled] = useState(
+    seed?.aiQuestionGenEnabled ?? true
+  )
 
   useEffect(() => {
     if (!seed) return
@@ -73,7 +79,9 @@ export function JobFormPage({ mode }: { mode: 'create' | 'edit' }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-xl font-semibold text-slate-900">{pageTitle}</div>
-          <div className="mt-1 text-sm text-slate-600">{mode === 'create' ? '建立新職缺' : '更新職缺資訊'}</div>
+          <div className="mt-1 text-sm text-slate-600">
+            {mode === 'create' ? '建立新職缺' : '更新職缺資訊'}
+          </div>
           {loadError ? <div className="mt-2 text-xs text-rose-600">{loadError}</div> : null}
         </div>
         <Link
@@ -102,7 +110,7 @@ export function JobFormPage({ mode }: { mode: 'create' | 'edit' }) {
                   experienceLevel,
                   education,
                   aiResumeMatchingEnabled,
-                  aiQuestionGenEnabled,
+                  aiQuestionGenEnabled
                 }
                 if (mode === 'create') {
                   await createJob(payload)
@@ -112,7 +120,7 @@ export function JobFormPage({ mode }: { mode: 'create' | 'edit' }) {
                 }
                 navigate('/jobs')
               } catch (err: any) {
-                alert(err?.detail ? JSON.stringify(err.detail) : err?.message ?? '儲存失敗')
+                alert(err?.detail ? JSON.stringify(err.detail) : (err?.message ?? '儲存失敗'))
               } finally {
                 setSaving(false)
               }
@@ -211,7 +219,9 @@ export function JobFormPage({ mode }: { mode: 'create' | 'edit' }) {
               />
               <span>
                 <span className="font-medium text-slate-900">是否啟用 AI 履歷比對</span>
-                <div className="mt-1 text-xs text-slate-500">將使用 AI 產生匹配分數與摘要（Mock）</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  將使用 AI 產生匹配分數與摘要（Mock）
+                </div>
               </span>
             </label>
 
@@ -224,7 +234,9 @@ export function JobFormPage({ mode }: { mode: 'create' | 'edit' }) {
               />
               <span>
                 <span className="font-medium text-slate-900">是否自動生成面試問題</span>
-                <div className="mt-1 text-xs text-slate-500">依職缺與履歷生成建議問題（僅展示）</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  依職缺與履歷生成建議問題（僅展示）
+                </div>
               </span>
             </label>
 
@@ -234,7 +246,9 @@ export function JobFormPage({ mode }: { mode: 'create' | 'edit' }) {
           </div>
 
           {mode === 'edit' ? (
-            <div className="mt-6 text-xs text-slate-500">編輯模式：{existing ? `job-${existing.id}` : '載入中/不存在'}</div>
+            <div className="mt-6 text-xs text-slate-500">
+              編輯模式：{existing ? `job-${existing.id}` : '載入中/不存在'}
+            </div>
           ) : null}
         </aside>
       </div>

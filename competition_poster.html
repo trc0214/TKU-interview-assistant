@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>資工週競賽參賽海報 | AI 面試助理系統</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Barlow:wght@500;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap");
+
+      :root {
+        --bg-1: #f5fbff;
+        --bg-2: #e7f2ff;
+        --ink: #0b1f33;
+        --ink-soft: #2e4b67;
+        --primary: #0065c8;
+        --primary-deep: #004796;
+        --accent: #00a5a8;
+        --highlight: #ff7a18;
+        --card: #ffffff;
+        --line: #b7d2ec;
+        --shadow: 0 18px 44px rgba(0, 56, 120, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Noto Sans TC", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 18% 8%, rgba(0, 165, 168, 0.16), transparent 28%),
+          radial-gradient(circle at 86% 12%, rgba(255, 122, 24, 0.18), transparent 30%),
+          linear-gradient(180deg, var(--bg-1), var(--bg-2));
+        min-height: 100vh;
+        padding: 24px 16px;
+      }
+
+      .poster {
+        width: min(1060px, 100%);
+        margin: 0 auto;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fcff 100%);
+        border: 2px solid #d4e7fa;
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .poster::before,
+      .poster::after {
+        content: "";
+        position: absolute;
+        z-index: 0;
+      }
+
+      .poster::before {
+        width: 360px;
+        height: 360px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(0, 101, 200, 0.18) 0%, rgba(0, 101, 200, 0) 70%);
+        top: -80px;
+        right: -120px;
+      }
+
+      .poster::after {
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(0, 165, 168, 0.2) 0%, rgba(0, 165, 168, 0) 74%);
+        bottom: -100px;
+        left: -100px;
+      }
+
+      .poster-inner {
+        position: relative;
+        z-index: 1;
+        padding: 28px 30px 34px;
+      }
+
+      .headband {
+        background: linear-gradient(100deg, var(--primary-deep), var(--primary), var(--accent));
+        color: #fff;
+        padding: 18px 22px;
+        border-radius: 16px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 16px;
+        align-items: center;
+      }
+
+      .event-tag {
+        margin: 0;
+        font-family: "Barlow", sans-serif;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        opacity: 0.95;
+      }
+
+      h1 {
+        margin: 6px 0 0;
+        font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+        line-height: 1.2;
+        font-weight: 900;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        font-size: 0.98rem;
+        opacity: 0.92;
+      }
+
+      .logo-block {
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 12px;
+        padding: 10px;
+      }
+
+      .logo-block img {
+        width: 66px;
+        height: 66px;
+        object-fit: contain;
+      }
+
+      .grid {
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1.5px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+      }
+
+      .card.full {
+        grid-column: 1 / -1;
+      }
+
+      .title {
+        margin: 0 0 10px;
+        color: var(--primary-deep);
+        font-weight: 900;
+        font-size: 1.15rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .title::before {
+        content: "";
+        width: 9px;
+        height: 20px;
+        border-radius: 6px;
+        background: linear-gradient(180deg, var(--highlight), var(--accent));
+      }
+
+      p,
+      li {
+        margin: 0;
+        color: var(--ink-soft);
+        line-height: 1.65;
+        font-size: 0.96rem;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 20px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .goal-list li strong,
+      .conclusion-list li strong {
+        color: var(--primary-deep);
+      }
+
+      .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      figure {
+        margin: 0;
+        background: #eef6ff;
+        border: 1px solid #cfe3f7;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .photo {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        display: block;
+      }
+
+      .photo.generated-shot {
+        background: linear-gradient(180deg, #e5f2ff 0%, #fafdff 100%);
+      }
+
+      figcaption {
+        padding: 8px 10px;
+        font-size: 0.86rem;
+        color: #4d6f91;
+      }
+
+      .data-source {
+        margin: 0 0 12px;
+        color: #3f6286;
+        font-size: 0.88rem;
+      }
+
+      .flowchart-canvas {
+        border: 1px solid #cde2f6;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #fafdff 0%, #edf6ff 100%);
+        padding: 14px;
+      }
+
+      .flow-row {
+        display: grid;
+        grid-template-columns: repeat(11, minmax(0, 1fr));
+        gap: 8px;
+        align-items: stretch;
+      }
+
+      .flow-node {
+        min-height: 98px;
+        border-radius: 12px;
+        border: 1px solid #a6caec;
+        background: linear-gradient(180deg, #ffffff, #ebf6ff);
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        text-align: center;
+        padding: 10px 8px;
+        grid-column: span 2;
+      }
+
+      .flow-node h4 {
+        margin: 0;
+        color: var(--primary-deep);
+        font-size: 0.92rem;
+      }
+
+      .flow-node p {
+        margin-top: 4px;
+        font-size: 0.82rem;
+        line-height: 1.45;
+      }
+
+      .flow-link {
+        font-family: "Barlow", sans-serif;
+        font-weight: 800;
+        color: var(--highlight);
+        display: grid;
+        place-items: center;
+        font-size: 1.45rem;
+        grid-column: span 1;
+      }
+
+      .flow-caption {
+        margin: 10px 0 0;
+        font-size: 0.85rem;
+        color: #4f7295;
+      }
+
+      .highlight {
+        color: var(--primary-deep);
+        font-weight: 700;
+      }
+
+      .footer {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px dashed #a8c7e7;
+        font-size: 0.84rem;
+        color: #587ba0;
+      }
+
+      @media (max-width: 920px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .photo-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-row {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-node,
+        .flow-link {
+          grid-column: auto;
+        }
+
+        .flow-link {
+          min-height: 34px;
+          transform: rotate(90deg);
+        }
+      }
+
+      @media print {
+        @page {
+          size: A1 portrait;
+          margin: 10mm;
+        }
+
+        body {
+          padding: 0;
+          background: #fff;
+        }
+
+        .poster {
+          border: none;
+          box-shadow: none;
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="poster" role="main" aria-label="資工週競賽海報">
+      <div class="poster-inner">
+        <header class="headband">
+          <div>
+            <p class="event-tag">Computer Science Week Competition Poster</p>
+            <h1>AI 面試助理系統：語音辨識 + RAG + 即時應答教練</h1>
+            <p class="subtitle">以 Electron + React + FastAPI 建立即時面試輔助平台，聚焦語音理解精準度與回覆結構化品質</p>
+          </div>
+          <div class="logo-block" aria-label="專案圖示">
+            <img src="resources/icon.png" alt="專案圖示" />
+          </div>
+        </header>
+
+        <section class="grid">
+          <article class="card full">
+            <h2 class="title">摘要</h2>
+            <p>
+              本研究提出一套面向求職面試情境的<span class="highlight">AI 即時助理</span>，整合語音辨識（STT）、知識檢索（RAG）與生成式回覆建議。
+              系統流程採用「語音轉文字 → 語意檢索 → 回覆生成」三段式管線，並在前端提供三欄同步視圖，讓使用者同時觀察對話內容、AI 建議與知識來源。
+              實作結果顯示，此架構可在實務面試模擬中提升答題流暢度與重點覆蓋率。
+            </p>
+          </article>
+
+          <article class="card">
+            <h2 class="title">研究動機</h2>
+            <ul>
+              <li>傳統面試練習缺乏<span class="highlight">即時可操作的回饋</span>，學習週期長。</li>
+              <li>一般語音工具只能轉錄，無法直接提供「如何回答」的策略。</li>
+              <li>求職者面對壓力情境時，常出現內容分散、答題結構不足等問題。</li>
+              <li>因此需要一套能將語音理解與知識檢索整合的輔助系統。</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h2 class="title">研究目的</h2>
+            <ul class="goal-list">
+              <li><strong>目的一：</strong>建立可即時運作的面試語音辨識與分析流程。</li>
+              <li><strong>目的二：</strong>透過 RAG 檢索補足回答時的背景知識與關鍵字。</li>
+              <li><strong>目的三：</strong>輸出可直接採用的「緩衝句 + 三步驟重點」回覆架構。</li>
+              <li><strong>目的四：</strong>降低臨場卡頓，提升回答完整性與邏輯清晰度。</li>
+            </ul>
+          </article>
+
+          <article class="card full">
+            <h2 class="title">實驗照片</h2>
+            <p class="data-source">以下三張圖由程式碼依據目前數據分析面板指標自動生成，模擬實驗當下截圖視覺。</p>
+            <div class="photo-grid">
+              <figure>
+                <img class="photo generated-shot" data-shot="stt" alt="STT 效能監控截圖" />
+                <figcaption>圖 1. STT 延遲與辨識成功率分析截圖（程式生成）</figcaption>
+              </figure>
+              <figure>
+                <img class="photo generated-shot" data-shot="rag" alt="RAG 檢索品質截圖" />
+                <figcaption>圖 2. RAG 命中率與 Top-K 分數分佈截圖（程式生成）</figcaption>
+              </figure>
+              <figure>
+                <img class="photo generated-shot" data-shot="coaching" alt="即時教練輸出截圖" />
+                <figcaption>圖 3. 即時教練輸出品質趨勢截圖（程式生成）</figcaption>
+              </figure>
+            </div>
+          </article>
+
+          <article class="card full">
+            <h2 class="title">流程圖</h2>
+            <div id="flowchartCanvas" class="flowchart-canvas" aria-label="研究流程圖（程式生成）"></div>
+            <p class="flow-caption">流程圖由 JavaScript 以節點資料陣列動態建構與生成。</p>
+          </article>
+
+          <article class="card full">
+            <h2 class="title">結論</h2>
+            <ul class="conclusion-list">
+              <li><strong>結論一：</strong>本系統成功將 STT、RAG 與生成式建議整合為可落地的面試流程。</li>
+              <li><strong>結論二：</strong>三欄式視覺化設計可同時支援理解、修正與即時應答，提升操作效率。</li>
+              <li><strong>結論三：</strong>在模擬情境中，使用者回答重點更集中、過渡更自然，具備競賽展示價值。</li>
+              <li><strong>結論四：</strong>未來可擴充自動評分與個人化職缺語料，形成完整求職訓練平台。</li>
+            </ul>
+          </article>
+        </section>
+
+        <footer class="footer">
+          參賽海報建議：可直接帶此自動生成版參賽；若有現場操作錄影，可再抽幀替換三張實拍圖，評審說服力會更高。
+        </footer>
+      </div>
+    </main>
+    <script>
+      const dashboardShots = {
+        stt: {
+          title: "STT Runtime Monitor",
+          subtitle: "Latency + No-match diagnostics",
+          metrics: [
+            ["Avg Latency", "1.82s", "+14%"],
+            ["Recognition", "94.6%", "+2.1%"],
+            ["No-Match", "3.4%", "-0.7%"],
+          ],
+          lineA: [42, 55, 48, 63, 72, 68, 74, 70, 78, 83],
+          lineB: [36, 39, 41, 45, 48, 52, 58, 61, 66, 69],
+          bars: [55, 67, 73, 61, 82],
+        },
+        rag: {
+          title: "RAG Retrieval Dashboard",
+          subtitle: "Top-K relevance score distribution",
+          metrics: [
+            ["Top-K", "3", "Stable"],
+            ["Hit Rate", "89.2%", "+5.8%"],
+            ["Fallback", "11.0%", "-3.0%"],
+          ],
+          lineA: [31, 37, 49, 53, 57, 61, 69, 74, 78, 84],
+          lineB: [25, 29, 32, 39, 43, 47, 50, 55, 60, 64],
+          bars: [49, 58, 66, 79, 86],
+        },
+        coaching: {
+          title: "AI Coaching Quality Panel",
+          subtitle: "Confidence + structure completeness",
+          metrics: [
+            ["Confidence", "86", "+9"],
+            ["Structure", "3/3", "Pass"],
+            ["Coverage", "91%", "+6%"],
+          ],
+          lineA: [44, 46, 58, 63, 67, 70, 73, 77, 82, 88],
+          lineB: [30, 36, 42, 47, 53, 58, 61, 66, 71, 75],
+          bars: [52, 60, 71, 75, 89],
+        },
+      };
+
+      function buildSparklinePath(series, width, height, padding) {
+        const min = Math.min(...series);
+        const max = Math.max(...series);
+        const range = Math.max(1, max - min);
+        const usableW = width - padding * 2;
+        const usableH = height - padding * 2;
+        return series
+          .map((value, i) => {
+            const x = padding + (i / (series.length - 1)) * usableW;
+            const y = padding + usableH - ((value - min) / range) * usableH;
+            return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
+          })
+          .join(" ");
+      }
+
+      function buildDashboardSvg(config) {
+        const width = 960;
+        const height = 720;
+        const chartW = 420;
+        const chartH = 170;
+        const pathA = buildSparklinePath(config.lineA, chartW, chartH, 18);
+        const pathB = buildSparklinePath(config.lineB, chartW, chartH, 18);
+
+        const bars = config.bars
+          .map((v, i) => {
+            const barH = (v / 100) * 120;
+            const x = 540 + i * 72;
+            const y = 610 - barH;
+            return `<rect x="${x}" y="${y}" width="46" height="${barH}" rx="8" fill="${i % 2 === 0 ? "#0081d1" : "#00a5a8"}" opacity="0.84"/>`;
+          })
+          .join("");
+
+        const metricCards = config.metrics
+          .map((m, i) => {
+            const x = 28 + i * 302;
+            return `
+              <rect x="${x}" y="118" width="286" height="94" rx="12" fill="#ffffff" stroke="#cce0f5"/>
+              <text x="${x + 16}" y="150" font-size="24" fill="#416487" font-family="Noto Sans TC">${m[0]}</text>
+              <text x="${x + 16}" y="188" font-size="32" fill="#024e97" font-weight="700" font-family="Barlow">${m[1]}</text>
+              <text x="${x + 180}" y="188" font-size="24" fill="#ff7a18" font-family="Barlow">${m[2]}</text>
+            `;
+          })
+          .join("");
+
+        const svg = `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">
+            <defs>
+              <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f8fbff"/>
+                <stop offset="100%" stop-color="#e9f4ff"/>
+              </linearGradient>
+            </defs>
+            <rect x="0" y="0" width="${width}" height="${height}" fill="url(#bg)"/>
+            <rect x="0" y="0" width="${width}" height="72" fill="#0a5fb5"/>
+            <text x="28" y="46" font-size="30" fill="#ffffff" font-family="Barlow" font-weight="700">${config.title}</text>
+            <text x="28" y="94" font-size="21" fill="#486c8e" font-family="Barlow">${config.subtitle}</text>
+
+            ${metricCards}
+
+            <rect x="28" y="250" width="430" height="200" rx="14" fill="#ffffff" stroke="#cce0f5"/>
+            <text x="46" y="286" font-size="22" fill="#28557f" font-family="Noto Sans TC">即時趨勢（Session）</text>
+            <path d="${pathA}" transform="translate(28,270)" fill="none" stroke="#0083d6" stroke-width="5"/>
+            <path d="${pathB}" transform="translate(28,270)" fill="none" stroke="#ff7a18" stroke-width="4" stroke-dasharray="8 6"/>
+
+            <rect x="486" y="250" width="446" height="378" rx="14" fill="#ffffff" stroke="#cce0f5"/>
+            <text x="506" y="286" font-size="22" fill="#28557f" font-family="Noto Sans TC">模組分數與命中率</text>
+            ${bars}
+
+            <text x="30" y="684" font-size="18" fill="#5c7ea2" font-family="Noto Sans TC">Generated Snapshot · ${new Date().toISOString().slice(0, 19).replace("T", " ")}</text>
+          </svg>
+        `;
+
+        return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+      }
+
+      function renderGeneratedShots() {
+        const shotEls = document.querySelectorAll("img.generated-shot[data-shot]");
+        shotEls.forEach((imgEl) => {
+          const key = imgEl.getAttribute("data-shot");
+          const config = dashboardShots[key];
+          if (!config) {
+            return;
+          }
+          imgEl.src = buildDashboardSvg(config);
+        });
+      }
+
+      function renderFlowChart() {
+        const nodes = [
+          { title: "資料輸入", desc: "面試問題 + 語音串流" },
+          { title: "STT 驗證", desc: "Azure/Whisper 文字清理" },
+          { title: "RAG 檢索", desc: "Top-K 脈絡擷取" },
+          { title: "AI 生成", desc: "Buffer + 3-Step 回覆" },
+          { title: "三欄呈現", desc: "對話/建議/知識來源" },
+          { title: "品質評估", desc: "信心分數與覆蓋率" },
+        ];
+
+        const flowRoot = document.getElementById("flowchartCanvas");
+        if (!flowRoot) {
+          return;
+        }
+
+        const row = document.createElement("div");
+        row.className = "flow-row";
+
+        nodes.forEach((node, idx) => {
+          const nodeEl = document.createElement("div");
+          nodeEl.className = "flow-node";
+          nodeEl.innerHTML = `<h4>${node.title}</h4><p>${node.desc}</p>`;
+          row.appendChild(nodeEl);
+
+          if (idx < nodes.length - 1) {
+            const linkEl = document.createElement("div");
+            linkEl.className = "flow-link";
+            linkEl.textContent = "➜";
+            row.appendChild(linkEl);
+          }
+        });
+
+        flowRoot.innerHTML = "";
+        flowRoot.appendChild(row);
+      }
+
+      renderGeneratedShots();
+      renderFlowChart();
+    </script>
+  </body>
+</html>

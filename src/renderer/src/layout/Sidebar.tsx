@@ -10,7 +10,7 @@ export function Sidebar() {
     { label: t.navInterviews, to: '/interviews' },
     { label: t.navAiAnalysis, to: '/ai-analysis' },
     { label: t.navMeeting, to: '/meeting' },
-    { label: t.navSettings, to: '/settings' },
+    { label: t.navSettings, to: '/settings' }
   ]
 
   return (
@@ -31,7 +31,7 @@ export function Sidebar() {
                 'flex items-center rounded-md px-3 py-2 text-sm',
                 isActive
                   ? 'bg-slate-100 font-medium text-slate-900'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               ].join(' ')
             }
             end={item.to === '/dashboard'}

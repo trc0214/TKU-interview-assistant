@@ -56,7 +56,7 @@ export function InterviewFormPage({ mode }: { mode: 'create' | 'edit' }) {
         }
       } catch (e: any) {
         if (cancelled) return
-        setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入選單失敗')
+        setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入選單失敗'))
       }
     }
     loadOptions()
@@ -92,7 +92,7 @@ export function InterviewFormPage({ mode }: { mode: 'create' | 'edit' }) {
         setNotes(it.notes)
       } catch (e: any) {
         if (cancelled) return
-        setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
+        setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入失敗'))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -143,7 +143,7 @@ export function InterviewFormPage({ mode }: { mode: 'create' | 'edit' }) {
                 location,
                 rating: rating === '' ? null : (rating as number),
                 decision,
-                notes,
+                notes
               }
 
               if (mode === 'create') {
@@ -155,7 +155,7 @@ export function InterviewFormPage({ mode }: { mode: 'create' | 'edit' }) {
                 navigate(`/interviews/${updated.id}`)
               }
             } catch (err: any) {
-              setError(err?.detail ? JSON.stringify(err.detail) : err?.message ?? '儲存失敗')
+              setError(err?.detail ? JSON.stringify(err.detail) : (err?.message ?? '儲存失敗'))
             } finally {
               setSaving(false)
             }

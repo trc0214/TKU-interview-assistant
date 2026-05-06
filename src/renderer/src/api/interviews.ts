@@ -1,11 +1,23 @@
 import { request } from './http'
-import type { Interview, InterviewAssistantSession, InterviewMeetingToken, CandidateMeetingToken, InterviewTranscriptEntry } from './types'
+import type {
+  Interview,
+  InterviewAssistantSession,
+  InterviewMeetingToken,
+  CandidateMeetingToken,
+  InterviewTranscriptEntry
+} from './types'
 
 export type InterviewCreate = {
   jobId: number
   resumeId: number
   scheduledAt?: string | null
-  status?: 'scheduled' | 'in_progress' | 'interrupted' | 'awaiting_review' | 'completed' | 'canceled'
+  status?:
+    | 'scheduled'
+    | 'in_progress'
+    | 'interrupted'
+    | 'awaiting_review'
+    | 'completed'
+    | 'canceled'
 
   interviewRound?: string
   interviewer?: string
@@ -19,7 +31,11 @@ export type InterviewCreate = {
 
 export type InterviewUpdate = Partial<InterviewCreate>
 
-export function listInterviews(params?: { jobId?: number; resumeId?: number; status?: string }): Promise<Interview[]> {
+export function listInterviews(params?: {
+  jobId?: number
+  resumeId?: number
+  status?: string
+}): Promise<Interview[]> {
   const parts: string[] = []
   if (params?.jobId) parts.push(`job_id=${encodeURIComponent(params.jobId)}`)
   if (params?.resumeId) parts.push(`resume_id=${encodeURIComponent(params.resumeId)}`)
@@ -56,11 +72,18 @@ export function createCandidateMeetingToken(data: {
   meetingHash: string
   candidateName: string
 }): Promise<CandidateMeetingToken> {
-  return request<CandidateMeetingToken>('/interviews/candidate-meeting-token', { method: 'POST', body: data })
+  return request<CandidateMeetingToken>('/interviews/candidate-meeting-token', {
+    method: 'POST',
+    body: data
+  })
 }
 
-export function getLatestInterviewAssistantSession(interviewId: number): Promise<InterviewAssistantSession | null> {
-  return request<InterviewAssistantSession | null>(`/interviews/${interviewId}/assistant-session/latest`)
+export function getLatestInterviewAssistantSession(
+  interviewId: number
+): Promise<InterviewAssistantSession | null> {
+  return request<InterviewAssistantSession | null>(
+    `/interviews/${interviewId}/assistant-session/latest`
+  )
 }
 
 export function startInterviewAssistantSession(
@@ -73,7 +96,7 @@ export function startInterviewAssistantSession(
 ): Promise<InterviewAssistantSession> {
   return request<InterviewAssistantSession>(`/interviews/${interviewId}/assistant-session/start`, {
     method: 'POST',
-    body: data,
+    body: data
   })
 }
 
@@ -91,7 +114,7 @@ export function syncInterviewAssistantSession(
 ): Promise<InterviewAssistantSession> {
   return request<InterviewAssistantSession>(`/interviews/${interviewId}/assistant-session/sync`, {
     method: 'POST',
-    body: data,
+    body: data
   })
 }
 
@@ -106,6 +129,6 @@ export function endInterviewAssistantSession(
 ): Promise<InterviewAssistantSession> {
   return request<InterviewAssistantSession>(`/interviews/${interviewId}/assistant-session/end`, {
     method: 'POST',
-    body: data,
+    body: data
   })
 }

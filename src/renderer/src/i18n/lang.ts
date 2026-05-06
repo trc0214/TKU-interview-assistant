@@ -26,7 +26,8 @@ export const lang = {
     meetingPreview: '視訊會議預覽',
     meetingReadyToStart: '準備好後即可開始會議。',
     meetingStarting: '啟動中…',
-    meetingDiagnosticHint: '偵測到 LiveKit TURN / DNS 連線異常。請檢查 VPN、防火牆與 DNS 設定，並確認網路允許 *.livekit.cloud 與 *.host.livekit.cloud 的連線。',
+    meetingDiagnosticHint:
+      '偵測到 LiveKit TURN / DNS 連線異常。請檢查 VPN、防火牆與 DNS 設定，並確認網路允許 *.livekit.cloud 與 *.host.livekit.cloud 的連線。',
     meetingStart: '開始會議',
     meetingJoin: '加入',
     meetingNext: '繼續',
@@ -94,7 +95,7 @@ export const lang = {
     navInterviews: '面試管理',
     navAiAnalysis: 'AI 分析結果',
     navMeeting: '線上面試',
-    navSettings: '系統設定',
+    navSettings: '系統設定'
   },
   en: {
     languageZh: '中文',
@@ -102,7 +103,8 @@ export const lang = {
     meetingTitle: 'Online Interview Assistant',
     meetingRoom: 'Room',
     meetingRoomName: 'Room Name',
-    meetingUnbound: 'No specific interview is linked. You can use this as a temporary meeting record.',
+    meetingUnbound:
+      'No specific interview is linked. You can use this as a temporary meeting record.',
     meetingResumeFallback: 'resume',
     meetingJobFallback: 'job',
     meetingLoading: 'Loading interview data…',
@@ -123,7 +125,8 @@ export const lang = {
     meetingPreview: 'Video conference preview',
     meetingReadyToStart: 'Start the meeting when you are ready.',
     meetingStarting: 'Starting…',
-    meetingDiagnosticHint: 'LiveKit TURN / DNS issue detected. Check VPN, firewall, and DNS settings, and allow *.livekit.cloud and *.host.livekit.cloud.',
+    meetingDiagnosticHint:
+      'LiveKit TURN / DNS issue detected. Check VPN, firewall, and DNS settings, and allow *.livekit.cloud and *.host.livekit.cloud.',
     meetingStart: 'Start meeting',
     meetingJoin: 'Join',
     meetingNext: 'Continue',
@@ -135,7 +138,8 @@ export const lang = {
     meetingUnable: 'Unable to establish LiveKit connection.',
     recruiter: 'Recruiter',
     recruiterQuestionLabel: 'Question',
-    sampleRecruiterQuestion: 'How do you approach product growth when you notice your key metrics are declining?',
+    sampleRecruiterQuestion:
+      'How do you approach product growth when you notice your key metrics are declining?',
     recruiterQuestion: 'Question',
     you: 'You',
     youStatus: 'Status',
@@ -161,11 +165,14 @@ export const lang = {
     cheatItems: 'items',
     cheatNoMatch: 'No matches.',
     cheatFallbackTitle1: 'RAG System Design',
-    cheatFallbackBody1: 'Use query rewrite, vector retrieval, and grounded synthesis with measurable outcomes.',
+    cheatFallbackBody1:
+      'Use query rewrite, vector retrieval, and grounded synthesis with measurable outcomes.',
     cheatFallbackTitle2: 'MCP Integration',
-    cheatFallbackBody2: 'Explain capability discovery, tool safety, and policy-governed invocation patterns.',
+    cheatFallbackBody2:
+      'Explain capability discovery, tool safety, and policy-governed invocation patterns.',
     cheatFallbackTitle3: 'Vector DB Trade-offs',
-    cheatFallbackBody3: 'Cover index strategy, latency/recall balance, and metadata filtering for precision.',
+    cheatFallbackBody3:
+      'Cover index strategy, latency/recall balance, and metadata filtering for precision.',
     situation: 'Situation',
     bufferStatement: 'Buffer Statement',
     followUp: 'Follow-up Questions',
@@ -191,8 +198,8 @@ export const lang = {
     navInterviews: 'Interview Management',
     navAiAnalysis: 'AI Analysis',
     navMeeting: 'Online Interview',
-    navSettings: 'Settings',
-  },
+    navSettings: 'Settings'
+  }
 } as const
 
 export type LangKey = keyof typeof lang.zh

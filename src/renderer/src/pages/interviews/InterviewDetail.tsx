@@ -65,7 +65,7 @@ export function InterviewDetailPage() {
         setItem(data)
       } catch (e: any) {
         if (cancelled) return
-        setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
+        setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入失敗'))
         setItem(null)
       }
     }
@@ -93,7 +93,10 @@ export function InterviewDetailPage() {
         <div className="text-sm font-medium text-slate-900">找不到面試</div>
         <div className="mt-2 text-sm text-slate-600">{error ?? '資料不存在或尚未載入。'}</div>
         <div className="mt-4">
-          <Link to="/interviews" className="text-sm text-slate-700 hover:text-slate-900 hover:underline">
+          <Link
+            to="/interviews"
+            className="text-sm text-slate-700 hover:text-slate-900 hover:underline"
+          >
             返回面試管理
           </Link>
         </div>
@@ -107,7 +110,8 @@ export function InterviewDetailPage() {
         <div>
           <div className="text-xl font-semibold text-slate-900">面試詳情</div>
           <div className="mt-1 text-sm text-slate-600">
-            {item.candidateName ?? `resume-${item.resumeId}`} / {item.jobTitle ?? `job-${item.jobId}`}
+            {item.candidateName ?? `resume-${item.resumeId}`} /{' '}
+            {item.jobTitle ?? `job-${item.jobId}`}
           </div>
           {error ? <div className="mt-2 text-xs text-rose-600">{error}</div> : null}
         </div>
@@ -170,7 +174,12 @@ export function InterviewDetailPage() {
               <dt className="text-slate-500">會議連結</dt>
               <dd className="min-w-0 text-right">
                 {item.meetingLink ? (
-                  <a className="text-slate-900 hover:underline" href={item.meetingLink} target="_blank" rel="noreferrer">
+                  <a
+                    className="text-slate-900 hover:underline"
+                    href={item.meetingLink}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     開啟
                   </a>
                 ) : (

@@ -53,7 +53,7 @@ async function parseJsonSafely(response: Response): Promise<unknown> {
 
 export async function request<T>(
   path: string,
-  options?: { method?: HttpMethod; body?: RequestBody; headers?: Record<string, string> },
+  options?: { method?: HttpMethod; body?: RequestBody; headers?: Record<string, string> }
 ): Promise<T> {
   const baseUrl = getBaseUrl().replace(/\/+$/, '')
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
@@ -62,12 +62,16 @@ export async function request<T>(
     const token = getAccessToken()
     const headers: Record<string, string> = {
       ...(options?.headers ?? {}),
-      ...(withAuth && token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(withAuth && token ? { Authorization: `Bearer ${token}` } : {})
     }
 
     let body: BodyInit | undefined
     if (options?.body !== undefined) {
-      if (options.body instanceof FormData || options.body instanceof URLSearchParams || options.body instanceof Blob) {
+      if (
+        options.body instanceof FormData ||
+        options.body instanceof URLSearchParams ||
+        options.body instanceof Blob
+      ) {
         body = options.body
       } else if (typeof options.body === 'string') {
         body = options.body
@@ -81,7 +85,7 @@ export async function request<T>(
     return fetch(`${baseUrl}${normalizedPath}`, {
       method: options?.method ?? 'GET',
       headers,
-      body,
+      body
     })
   }
 
@@ -96,7 +100,7 @@ export async function request<T>(
         const refreshResponse = await fetch(`${baseUrl}/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
+          body: JSON.stringify({ refreshToken })
         })
         if (refreshResponse.ok) {
           const refreshed = (await parseJsonSafely(refreshResponse)) as unknown
@@ -115,7 +119,9 @@ export async function request<T>(
     }
 
     const detail =
-      payload && typeof payload === 'object' && 'detail' in payload ? (payload as { detail: unknown }).detail : payload
+      payload && typeof payload === 'object' && 'detail' in payload
+        ? (payload as { detail: unknown }).detail
+        : payload
     throw new ApiError(`API request failed: ${response.status}`, response.status, detail)
   }
 

@@ -63,9 +63,10 @@ function startPythonBackend() {
     ? path.join(process.resourcesPath, 'backend')
     : path.join(app.getAppPath(), 'backend')
 
-  const venvPath = process.platform === 'win32'
-    ? path.join(backendBaseDir, '.venv', 'Scripts', 'python.exe')
-    : path.join(backendBaseDir, '.venv', 'bin', 'python')
+  const venvPath =
+    process.platform === 'win32'
+      ? path.join(backendBaseDir, '.venv', 'Scripts', 'python.exe')
+      : path.join(backendBaseDir, '.venv', 'bin', 'python')
 
   console.log('啟動 Python 於:', venvPath)
 
@@ -79,19 +80,19 @@ function startPythonBackend() {
 }
 // 在 app.whenReady() 呼叫
 app.whenReady().then(() => {
-  startPythonBackend();
-  createWindow();
+  startPythonBackend()
+  createWindow()
 })
 
 // 核心保護機制 A：當所有視窗關閉時
 app.on('window-all-closed', () => {
   if (pyProcess) {
-    console.log('正在關閉 Python 後端...');
+    console.log('正在關閉 Python 後端...')
     // 在 Windows 上，有時需要強制殺死整個進程樹
-    pyProcess.kill(); 
-    pyProcess = null;
+    pyProcess.kill()
+    pyProcess = null
   }
-  
+
   if (process.platform !== 'darwin') {
     app.quit()
   }
@@ -99,5 +100,5 @@ app.on('window-all-closed', () => {
 
 // 核心保護機制 B：當 App 準備退出時（保險鎖）
 app.on('will-quit', () => {
-  if (pyProcess) pyProcess.kill();
+  if (pyProcess) pyProcess.kill()
 })

@@ -53,7 +53,7 @@ export function InterviewsListPage() {
       const data = await listInterviews()
       setItems(data)
     } catch (e: any) {
-      setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
+      setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入失敗'))
       setItems([])
     }
   }
@@ -95,7 +95,9 @@ export function InterviewsListPage() {
               {(items ?? []).map((it) => (
                 <tr key={it.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-slate-900">{it.candidateName ?? `resume-${it.resumeId}`}</div>
+                    <div className="font-medium text-slate-900">
+                      {it.candidateName ?? `resume-${it.resumeId}`}
+                    </div>
                     <div className="mt-1 text-xs text-slate-500">interview-{it.id}</div>
                   </td>
                   <td className="px-4 py-3 text-slate-700">{it.jobTitle ?? `job-${it.jobId}`}</td>
@@ -137,7 +139,9 @@ export function InterviewsListPage() {
                             await deleteInterview(it.id)
                             await refresh()
                           } catch (e: any) {
-                            setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '刪除失敗')
+                            setError(
+                              e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '刪除失敗')
+                            )
                           } finally {
                             setBusyId(null)
                           }

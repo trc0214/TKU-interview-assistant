@@ -14,14 +14,15 @@ const RECORDER_TIMESLICE_MS = 2000
 const SILENCE_RELEASE_MS = 650
 const MIN_CHUNK_BYTES = 8192
 const MIN_BATCH_UPLOAD_BYTES = 22000
-const SPEECH_RMS_THRESHOLD = 0.012
-const NOISE_RMS_THRESHOLD = 0.018
-const LOW_VOLUME_RMS_THRESHOLD = 0.01
+const SPEECH_RMS_THRESHOLD = 0.006 // 降低閾值，原為 0.012
+const NOISE_RMS_THRESHOLD = 0.015 // 降低閾值，原為 0.018
+const LOW_VOLUME_RMS_THRESHOLD = 0.004 // 降低閾值，原為 0.01
 const MIN_TRANSCRIPT_TEXT_LENGTH = 2
 const MERGE_WINDOW_MS = 8000
 const SHORT_FRAGMENT_LENGTH = 18
 const HIGH_SIMILARITY_THRESHOLD = 0.88
 const FORCE_UPLOAD_SILENT_CHUNKS = 3
+const LOW_VOLUME_TIMEOUT_MS = 600 // 從 1500ms 降低為更快反應，原隱含為 1500
 
 type AudioIssue = 'low-volume' | 'high-noise' | 'clipping' | null
 
@@ -37,9 +38,9 @@ type SpeechTranscribeResponse = {
 function supportsBackendTranscription(): boolean {
   return Boolean(
     typeof window !== 'undefined' &&
-      navigator.mediaDevices &&
-      typeof navigator.mediaDevices.getUserMedia === 'function' &&
-      typeof window.MediaRecorder !== 'undefined',
+    navigator.mediaDevices &&
+    typeof navigator.mediaDevices.getUserMedia === 'function' &&
+    typeof window.MediaRecorder !== 'undefined'
   )
 }
 
@@ -49,6 +50,7 @@ function resolveRecorderMimeType(): string | undefined {
     'audio/webm',
     'audio/mp4',
     'audio/ogg;codecs=opus',
+    'audio/wav' // 添加 WAV 作為備選，最兼容
   ]
 
   for (const mimeType of preferredTypes) {
@@ -64,7 +66,7 @@ function normalizeForComparison(text: string): string {
   return text
     .toLowerCase()
     .replace(/\s+/g, ' ')
-    .replace(/[，。！？,.!?、;；:："'`~^*()\[\]{}<>\/\\|_-]+/g, '')
+    .replace(/[，。！？,.!?、;；:："'`~^*()[\]{}<>|_-]+/g, '')
     .trim()
 }
 
@@ -91,6 +93,7 @@ type InitParams = {
   interviewId?: number
   interviewer?: string
   candidateName?: string
+  language?: string
 }
 
 export type InterviewAssistantSnapshot = {
@@ -129,7 +132,8 @@ type InterviewAssistantApi = {
 export function useInterviewAssistant({
   interviewId,
   interviewer,
-  candidateName
+  candidateName,
+  language = 'zh-TW'
 }: InitParams): InterviewAssistantApi {
   const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -143,6 +147,7 @@ export function useInterviewAssistant({
   const carryOverChunkRef = useRef<Blob | null>(null)
   const pendingSpeechChunksRef = useRef<Blob[]>([])
   const pendingSpeechBytesRef = useRef(0)
+  const lastFlushAtRef = useRef(0)
   const uploadQueueRef = useRef<Promise<void>>(Promise.resolve())
   const noSpeechChunkCountRef = useRef(0)
   const silentChunkStreakRef = useRef(0)
@@ -184,7 +189,7 @@ export function useInterviewAssistant({
 
     return {
       rms: Math.sqrt(sum / timeDomain.length),
-      peak,
+      peak
     }
   }
 
@@ -224,7 +229,9 @@ export function useInterviewAssistant({
   }, [])
 
   const startAudioAnalysis = useCallback((stream: MediaStream) => {
-    const AudioContextCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    const AudioContextCtor =
+      window.AudioContext ||
+      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
     if (!AudioContextCtor) {
       return
     }
@@ -233,9 +240,17 @@ export function useInterviewAssistant({
       const context = new AudioContextCtor()
       const source = context.createMediaStreamSource(stream)
       const analyser = context.createAnalyser()
+
+      // 添加音頻增益放大器，改善低音量檢測
+      const gainNode = context.createGain()
+      gainNode.gain.value = 2.0 // 2x 增益
+
       analyser.fftSize = 2048
       analyser.smoothingTimeConstant = 0.65
-      source.connect(analyser)
+
+      // 連接：source → gainNode → analyser
+      source.connect(gainNode)
+      gainNode.connect(analyser)
 
       audioContextRef.current = context
       analyserRef.current = analyser
@@ -248,7 +263,8 @@ export function useInterviewAssistant({
 
         analyserRef.current.getByteTimeDomainData(bucket)
         const { rms, peak } = computeRmsAndPeak(bucket)
-        const hasSpeech = rms >= SPEECH_RMS_THRESHOLD || (peak >= 0.08 && rms >= LOW_VOLUME_RMS_THRESHOLD * 1.5)
+        const hasSpeech =
+          rms >= SPEECH_RMS_THRESHOLD || (peak >= 0.08 && rms >= LOW_VOLUME_RMS_THRESHOLD * 1.5)
         speechLikelyRef.current = hasSpeech
 
         if (hasSpeech) {
@@ -264,16 +280,25 @@ export function useInterviewAssistant({
         }
 
         recentSpeechMsRef.current = Math.max(0, recentSpeechMsRef.current - AUDIO_QUALITY_POLL_MS)
-        lowVolumeMsRef.current = rms < LOW_VOLUME_RMS_THRESHOLD ? lowVolumeMsRef.current + AUDIO_QUALITY_POLL_MS : Math.max(0, lowVolumeMsRef.current - AUDIO_QUALITY_POLL_MS)
-        highNoiseMsRef.current = rms > NOISE_RMS_THRESHOLD ? highNoiseMsRef.current + AUDIO_QUALITY_POLL_MS : Math.max(0, highNoiseMsRef.current - AUDIO_QUALITY_POLL_MS)
-        clippingMsRef.current = peak > 0.98 ? clippingMsRef.current + AUDIO_QUALITY_POLL_MS : Math.max(0, clippingMsRef.current - AUDIO_QUALITY_POLL_MS)
+        lowVolumeMsRef.current =
+          rms < LOW_VOLUME_RMS_THRESHOLD
+            ? lowVolumeMsRef.current + AUDIO_QUALITY_POLL_MS
+            : Math.max(0, lowVolumeMsRef.current - AUDIO_QUALITY_POLL_MS)
+        highNoiseMsRef.current =
+          rms > NOISE_RMS_THRESHOLD
+            ? highNoiseMsRef.current + AUDIO_QUALITY_POLL_MS
+            : Math.max(0, highNoiseMsRef.current - AUDIO_QUALITY_POLL_MS)
+        clippingMsRef.current =
+          peak > 0.98
+            ? clippingMsRef.current + AUDIO_QUALITY_POLL_MS
+            : Math.max(0, clippingMsRef.current - AUDIO_QUALITY_POLL_MS)
 
         let issue: AudioIssue = null
         if (clippingMsRef.current >= 360) {
           issue = 'clipping'
         } else if (highNoiseMsRef.current >= 1200) {
           issue = 'high-noise'
-        } else if (lowVolumeMsRef.current >= 1500) {
+        } else if (lowVolumeMsRef.current >= LOW_VOLUME_TIMEOUT_MS) {
           issue = 'low-volume'
         }
 
@@ -395,14 +420,16 @@ export function useInterviewAssistant({
           channelCount: 1,
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true,
-        },
+          autoGainControl: true
+        }
       })
       streamRef.current = stream
       startAudioAnalysis(stream)
 
       const mimeType = resolveRecorderMimeType()
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
       recorderRef.current = recorder
       initializationChunkRef.current = null
       carryOverChunkRef.current = null
@@ -416,21 +443,23 @@ export function useInterviewAssistant({
       const normalizeChunk = (chunk: Blob): Blob => {
         if (!chunk.size) return chunk
 
+        // 非 container 格式直接回傳
         if (!isLikelyWebm && !isLikelyMp4) {
           return chunk
         }
 
+        // 第一個拿到的塊通常包含初始化/headers（保留但不複製到每個塊）
         if (!initializationChunkRef.current) {
           initializationChunkRef.current = chunk
+          // 返回原始塊，但不要在此處將初始化段附加到後續塊上
           return chunk
         }
 
-        return new Blob([initializationChunkRef.current, chunk], {
-          type: chunk.type || mimeType || 'audio/webm',
-        })
+        // 對於後續塊，僅返回原始數據塊；最終組合時會在最前面加上初始化段
+        return chunk
       }
 
-      const appendTranscriptText = (incomingText: string) => {
+      const appendTranscriptText = (incomingText: string): void => {
         const text = sanitizeTranscriptText(incomingText)
         if (text.length < MIN_TRANSCRIPT_TEXT_LENGTH) {
           return
@@ -453,7 +482,8 @@ export function useInterviewAssistant({
           const isDuplicate =
             normalizedText === normalizedLast ||
             normalizedLast.includes(normalizedText) ||
-            (normalizedText.includes(normalizedLast) && normalizedText.length - normalizedLast.length <= 12) ||
+            (normalizedText.includes(normalizedLast) &&
+              normalizedText.length - normalizedLast.length <= 12) ||
             similarity >= HIGH_SIMILARITY_THRESHOLD
 
           if (isDuplicate) {
@@ -494,20 +524,46 @@ export function useInterviewAssistant({
         setUpdatedAt(Date.now())
       }
 
-      const flushPendingChunks = async () => {
+      const flushPendingChunks = async (): Promise<void> => {
         const pendingChunks = pendingSpeechChunksRef.current
         if (!pendingChunks.length) {
           return
         }
 
-        const extension = mimeType?.includes('mp4') ? 'mp4' : mimeType?.includes('ogg') ? 'ogg' : 'webm'
-        const leadingChunk = carryOverChunkRef.current
-        const payloadBlob = new Blob(
-          leadingChunk ? [leadingChunk, ...pendingChunks] : pendingChunks,
-          {
-            type: pendingChunks[pendingChunks.length - 1]?.type || mimeType || 'audio/webm',
-          },
-        )
+        // rate-limit frequent flushes (helps prevent repeated rapid POSTs)
+        const now = Date.now()
+        if (now - lastFlushAtRef.current < 700 && pendingSpeechBytesRef.current < MIN_BATCH_UPLOAD_BYTES * 2) {
+          return
+        }
+        lastFlushAtRef.current = now
+
+        const extension = mimeType?.includes('mp4')
+          ? 'mp4'
+          : mimeType?.includes('ogg')
+            ? 'ogg'
+            : mimeType?.includes('wav')
+              ? 'wav'
+              : 'webm'
+
+        // 構建 blob：確保只有一個初始化段在最前面，且不重複
+        const blobParts: Blob[] = []
+
+        if (initializationChunkRef.current) {
+          blobParts.push(initializationChunkRef.current)
+        }
+
+        // 添加所有待機塊，但避免將相同的 initialization chunk 重複加入
+        for (const part of pendingChunks) {
+          if (initializationChunkRef.current && part === initializationChunkRef.current) {
+            // skip duplicate
+            continue
+          }
+          blobParts.push(part)
+        }
+
+        const payloadBlob = new Blob(blobParts, {
+          type: mimeType || 'audio/webm'
+        })
 
         pendingSpeechChunksRef.current = []
         pendingSpeechBytesRef.current = 0
@@ -517,17 +573,17 @@ export function useInterviewAssistant({
           setPartialText('辨識中…')
 
           const file = new File([payloadBlob], `chunk-${Date.now()}.${extension}`, {
-            type: payloadBlob.type || mimeType || 'audio/webm',
+            type: mimeType || 'audio/webm'
           })
           const formData = new FormData()
           formData.append('file', file)
 
           const response = await request<SpeechTranscribeResponse>(
-            '/speech/transcribe?language=zh-TW&prefer_local=false',
+            `/speech/transcribe?language=${encodeURIComponent(language)}&prefer_local=false`,
             {
               method: 'POST',
-              body: formData,
-            },
+              body: formData
+            }
           )
 
           if (activeSessionRef.current !== sessionId) {
@@ -551,7 +607,9 @@ export function useInterviewAssistant({
           const text = (response.text || '').trim()
           if (text) {
             noSpeechChunkCountRef.current = 0
-            setError((current) => (current && current.includes('未偵測到清楚語音') ? null : current))
+            setError((current) =>
+              current && current.includes('未偵測到清楚語音') ? null : current
+            )
             appendTranscriptText(text)
           }
 
@@ -560,7 +618,35 @@ export function useInterviewAssistant({
           if (activeSessionRef.current !== sessionId) {
             return
           }
-          const message = unknownError instanceof Error ? unknownError.message : '語音轉錄失敗'
+          let message = '語音轉錄失敗'
+
+          // Handle ApiError from request function
+          if (unknownError && typeof unknownError === 'object' && 'status' in unknownError) {
+            const apiError = unknownError as { status: number; detail?: unknown; message?: string }
+            const status = apiError.status
+            const detail = String(apiError.detail || apiError.message || '')
+
+            if (status === 400) {
+              message = `無效的音頻格式: ${detail}`
+            } else if (status === 401 || status === 403) {
+              message = '認證失敗，請重新登入。'
+            } else if (status === 404) {
+              message = '轉錄服務暫不可用。'
+            } else if (status === 503) {
+              message = `語音轉錄服務無法使用: ${detail}`
+            } else if (status >= 500) {
+              message = `伺服器錯誤 (${status}): ${detail || '請稍後重試。'}`
+            }
+          } else if (unknownError instanceof Error) {
+            const errorMsg = unknownError.message.toLowerCase()
+            if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+              message = '網路連線錯誤，請檢查網路狀態。'
+            } else if (errorMsg.includes('timeout')) {
+              message = '伺服器無回應，請稍後重試。'
+            } else {
+              message = unknownError.message || message
+            }
+          }
           setError(message)
           setPartialText('')
         }
@@ -586,13 +672,18 @@ export function useInterviewAssistant({
 
             if (silentChunkStreakRef.current >= FORCE_UPLOAD_SILENT_CHUNKS) {
               if (preRollChunkRef.current && pendingSpeechChunksRef.current.length === 0) {
-                pendingSpeechChunksRef.current.push(preRollChunkRef.current)
-                pendingSpeechBytesRef.current += preRollChunkRef.current.size
+                // avoid pushing initialization chunk twice
+                if (!(initializationChunkRef.current && preRollChunkRef.current === initializationChunkRef.current)) {
+                  pendingSpeechChunksRef.current.push(preRollChunkRef.current)
+                  pendingSpeechBytesRef.current += preRollChunkRef.current.size
+                }
                 preRollChunkRef.current = null
               }
 
-              pendingSpeechChunksRef.current.push(normalizedChunk)
-              pendingSpeechBytesRef.current += normalizedChunk.size
+              if (!(initializationChunkRef.current && normalizedChunk === initializationChunkRef.current)) {
+                pendingSpeechChunksRef.current.push(normalizedChunk)
+                pendingSpeechBytesRef.current += normalizedChunk.size
+              }
 
               await flushPendingChunks()
               silentChunkStreakRef.current = 0
@@ -606,13 +697,17 @@ export function useInterviewAssistant({
           silentChunkStreakRef.current = 0
 
           if (preRollChunkRef.current && pendingSpeechChunksRef.current.length === 0) {
-            pendingSpeechChunksRef.current.push(preRollChunkRef.current)
-            pendingSpeechBytesRef.current += preRollChunkRef.current.size
+            if (!(initializationChunkRef.current && preRollChunkRef.current === initializationChunkRef.current)) {
+              pendingSpeechChunksRef.current.push(preRollChunkRef.current)
+              pendingSpeechBytesRef.current += preRollChunkRef.current.size
+            }
             preRollChunkRef.current = null
           }
 
-          pendingSpeechChunksRef.current.push(normalizedChunk)
-          pendingSpeechBytesRef.current += normalizedChunk.size
+          if (!(initializationChunkRef.current && normalizedChunk === initializationChunkRef.current)) {
+            pendingSpeechChunksRef.current.push(normalizedChunk)
+            pendingSpeechBytesRef.current += normalizedChunk.size
+          }
 
           if (pendingSpeechBytesRef.current < MIN_BATCH_UPLOAD_BYTES) {
             return
@@ -621,11 +716,9 @@ export function useInterviewAssistant({
           await flushPendingChunks()
         }
 
-        uploadQueueRef.current = uploadQueueRef.current
-          .then(uploadChunk)
-          .catch(() => {
-            // keep queue alive
-          })
+        uploadQueueRef.current = uploadQueueRef.current.then(uploadChunk).catch(() => {
+          // keep queue alive
+        })
       }
 
       recorder.onerror = (event: Event) => {
@@ -637,31 +730,47 @@ export function useInterviewAssistant({
       recorder.onstop = () => {
         uploadQueueRef.current = uploadQueueRef.current.then(async () => {
           if (pendingSpeechChunksRef.current.length) {
-            const extension = mimeType?.includes('mp4') ? 'mp4' : mimeType?.includes('ogg') ? 'ogg' : 'webm'
-            const leadingChunk = carryOverChunkRef.current
+            const extension = mimeType?.includes('mp4')
+              ? 'mp4'
+              : mimeType?.includes('ogg')
+                ? 'ogg'
+                : mimeType?.includes('wav')
+                  ? 'wav'
+                  : 'webm'
             const pendingChunks = pendingSpeechChunksRef.current
-            const payloadBlob = new Blob(
-              leadingChunk ? [leadingChunk, ...pendingChunks] : pendingChunks,
-              {
-                type: pendingChunks[pendingChunks.length - 1]?.type || mimeType || 'audio/webm',
-              },
-            )
+
+            // 構建 blob：確保只有一個初始化段在最前面，且不重複（與 flushPendingChunks 一致）
+            const blobParts: Blob[] = []
+            if (initializationChunkRef.current) {
+              blobParts.push(initializationChunkRef.current)
+            }
+
+            for (const part of pendingChunks) {
+              if (initializationChunkRef.current && part === initializationChunkRef.current) {
+                continue
+              }
+              blobParts.push(part)
+            }
+
+            const payloadBlob = new Blob(blobParts, {
+              type: mimeType || 'audio/webm'
+            })
             pendingSpeechChunksRef.current = []
             pendingSpeechBytesRef.current = 0
 
             const file = new File([payloadBlob], `chunk-${Date.now()}.${extension}`, {
-              type: payloadBlob.type || mimeType || 'audio/webm',
+              type: mimeType || 'audio/webm'
             })
             const formData = new FormData()
             formData.append('file', file)
 
             try {
               const response = await request<SpeechTranscribeResponse>(
-                '/speech/transcribe?language=zh-TW&prefer_local=false',
+                `/speech/transcribe?language=${encodeURIComponent(language)}&prefer_local=false`,
                 {
                   method: 'POST',
-                  body: formData,
-                },
+                  body: formData
+                }
               )
 
               if (response.provider) {
@@ -672,7 +781,9 @@ export function useInterviewAssistant({
               const text = (response.text || '').trim()
               if (text) {
                 noSpeechChunkCountRef.current = 0
-                setError((current) => (current && current.includes('未偵測到清楚語音') ? null : current))
+                setError((current) =>
+                  current && current.includes('未偵測到清楚語音') ? null : current
+                )
                 appendTranscriptText(text)
               }
             } catch {
@@ -708,7 +819,7 @@ export function useInterviewAssistant({
       setError(message)
       setIsListening(false)
     }
-  }, [isListening, isSupported, startAudioAnalysis, startedAt, stopAudioAnalysis])
+  }, [isListening, isSupported, startAudioAnalysis, startedAt, stopAudioAnalysis, language])
 
   const resetSession = useCallback(
     (shouldClearDraft: boolean) => {

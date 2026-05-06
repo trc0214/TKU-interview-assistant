@@ -61,9 +61,9 @@ export function AuthProvider(props: { children: React.ReactNode }) {
       logout() {
         clearTokens()
         setUser(null)
-      },
+      }
     }),
-    [user, loading],
+    [user, loading]
   )
 
   return <AuthContext.Provider value={value}>{props.children}</AuthContext.Provider>

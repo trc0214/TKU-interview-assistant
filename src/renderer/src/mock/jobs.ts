@@ -28,7 +28,7 @@ export const jobsMock: Job[] = [
     experienceLevel: '2-3',
     education: '大學',
     aiResumeMatchingEnabled: true,
-    aiQuestionGenEnabled: true,
+    aiQuestionGenEnabled: true
   },
   {
     id: 'job-002',
@@ -42,7 +42,7 @@ export const jobsMock: Job[] = [
     experienceLevel: '4-6',
     education: '大學',
     aiResumeMatchingEnabled: true,
-    aiQuestionGenEnabled: false,
+    aiQuestionGenEnabled: false
   },
   {
     id: 'job-003',
@@ -56,8 +56,8 @@ export const jobsMock: Job[] = [
     experienceLevel: '2-3',
     education: '大學',
     aiResumeMatchingEnabled: false,
-    aiQuestionGenEnabled: false,
-  },
+    aiQuestionGenEnabled: false
+  }
 ]
 
 export function getJobById(jobId: string | undefined) {

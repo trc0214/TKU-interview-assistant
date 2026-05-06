@@ -65,14 +65,18 @@ export function DashboardPage() {
     async function load() {
       try {
         setError(null)
-        const [jobsData, resumesData, interviewsData] = await Promise.all([listJobs(), listResumes(), listInterviews()])
+        const [jobsData, resumesData, interviewsData] = await Promise.all([
+          listJobs(),
+          listResumes(),
+          listInterviews()
+        ])
         if (cancelled) return
         setJobs(jobsData)
         setResumes(resumesData)
         setInterviews(interviewsData)
       } catch (e: any) {
         if (cancelled) return
-        setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
+        setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入失敗'))
         setJobs([])
         setResumes([])
         setInterviews([])
@@ -92,7 +96,7 @@ export function DashboardPage() {
       low: 0,
       medium: 0,
       high: 0,
-      top: 0,
+      top: 0
     }
 
     safeResumes.forEach((resume) => {
@@ -107,7 +111,7 @@ export function DashboardPage() {
       pass: 0,
       hold: 0,
       reject: 0,
-      undecided: 0,
+      undecided: 0
     }
 
     safeInterviews.forEach((interview) => {
@@ -127,23 +131,31 @@ export function DashboardPage() {
       recentResumes: [...safeResumes].slice(0, 5),
       funnel: [
         { label: '全部職缺', value: safeJobs.length, tone: 'slate' as const },
-        { label: '招募中職缺', value: safeJobs.filter((j) => j.status === 'open').length, tone: 'emerald' as const },
+        {
+          label: '招募中職缺',
+          value: safeJobs.filter((j) => j.status === 'open').length,
+          tone: 'emerald' as const
+        },
         { label: '收到履歷', value: safeResumes.length, tone: 'amber' as const },
         { label: '已安排面試', value: safeInterviews.length, tone: 'slate' as const },
-        { label: '待複核', value: safeInterviews.filter((it) => it.status === 'awaiting_review').length, tone: 'rose' as const },
+        {
+          label: '待複核',
+          value: safeInterviews.filter((it) => it.status === 'awaiting_review').length,
+          tone: 'rose' as const
+        }
       ],
       scoreDistribution: [
         { label: '0-59', value: scoreBuckets.low, tone: 'rose' as const },
         { label: '60-74', value: scoreBuckets.medium, tone: 'amber' as const },
         { label: '75-89', value: scoreBuckets.high, tone: 'emerald' as const },
-        { label: '90-100', value: scoreBuckets.top, tone: 'slate' as const },
+        { label: '90-100', value: scoreBuckets.top, tone: 'slate' as const }
       ],
       decisionDistribution: [
         { label: 'Pass', value: decisionCounts.pass, tone: 'emerald' as const },
         { label: 'Hold', value: decisionCounts.hold, tone: 'amber' as const },
         { label: 'Reject', value: decisionCounts.reject, tone: 'rose' as const },
-        { label: '未決', value: decisionCounts.undecided, tone: 'slate' as const },
-      ],
+        { label: '未決', value: decisionCounts.undecided, tone: 'slate' as const }
+      ]
     }
   }, [interviews, jobs, resumes])
 
@@ -158,9 +170,21 @@ export function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard title="招募中職缺數量" value={loading ? '—' : `${metrics.openJobs}`} hint="目前狀態為 招募中" />
-        <StatCard title="已收到履歷數量" value={loading ? '—' : `${metrics.totalResumes}`} hint="包含已分析/已面試" />
-        <StatCard title="已完成 AI 初步評估人數" value={loading ? '—' : `${metrics.analyzedCount}`} hint="履歷狀態非 已收到" />
+        <StatCard
+          title="招募中職缺數量"
+          value={loading ? '—' : `${metrics.openJobs}`}
+          hint="目前狀態為 招募中"
+        />
+        <StatCard
+          title="已收到履歷數量"
+          value={loading ? '—' : `${metrics.totalResumes}`}
+          hint="包含已分析/已面試"
+        />
+        <StatCard
+          title="已完成 AI 初步評估人數"
+          value={loading ? '—' : `${metrics.analyzedCount}`}
+          hint="履歷狀態非 已收到"
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
@@ -191,13 +215,19 @@ export function DashboardPage() {
                 {metrics.recentJobs.map((job) => (
                   <tr key={job.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">
-                      <Link to={`/jobs/${job.id}`} className="font-medium text-slate-900 hover:underline">
+                      <Link
+                        to={`/jobs/${job.id}`}
+                        className="font-medium text-slate-900 hover:underline"
+                      >
                         {job.title}
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-slate-700">{job.department}</td>
                     <td className="px-4 py-3">
-                      <Badge label={formatJobStatus(job.status)} tone={job.status === 'open' ? 'success' : 'default'} />
+                      <Badge
+                        label={formatJobStatus(job.status)}
+                        tone={job.status === 'open' ? 'success' : 'default'}
+                      />
                     </td>
                     <td className="px-4 py-3 text-slate-700">{formatDate(job.createdAt)}</td>
                   </tr>
@@ -228,7 +258,10 @@ export function DashboardPage() {
                 {metrics.recentResumes.map((r) => (
                   <tr key={r.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">
-                      <Link to={`/resumes/${r.id}`} className="font-medium text-slate-900 hover:underline">
+                      <Link
+                        to={`/resumes/${r.id}`}
+                        className="font-medium text-slate-900 hover:underline"
+                      >
                         {r.candidateName}
                       </Link>
                     </td>
@@ -236,7 +269,13 @@ export function DashboardPage() {
                     <td className="px-4 py-3">
                       <Badge
                         label={formatResumeStatus(r.status)}
-                        tone={r.status === 'received' ? 'info' : r.status === 'analyzed' ? 'warning' : 'success'}
+                        tone={
+                          r.status === 'received'
+                            ? 'info'
+                            : r.status === 'analyzed'
+                              ? 'warning'
+                              : 'success'
+                        }
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -244,7 +283,9 @@ export function DashboardPage() {
                         <div className="w-28">
                           <ProgressBar value={r.aiMatchScore ?? 0} />
                         </div>
-                        <div className="tabular-nums text-sm font-medium text-slate-900">{r.aiMatchScore ?? 0}%</div>
+                        <div className="tabular-nums text-sm font-medium text-slate-900">
+                          {r.aiMatchScore ?? 0}%
+                        </div>
                       </div>
                     </td>
                   </tr>

@@ -19,12 +19,14 @@ function LiveKitMeetingPanelBase({
   className,
   onConnected,
   onDisconnected,
-  onError,
+  onError
 }: LiveKitMeetingPanelProps) {
   const containerClassName = className ?? 'h-[72vh] min-h-[520px]'
 
   return (
-    <div className={`${containerClassName} overflow-hidden rounded-md border border-slate-200 bg-slate-950`}>
+    <div
+      className={`${containerClassName} overflow-hidden rounded-md border border-slate-200 bg-slate-950`}
+    >
       <LiveKitRoom
         token={token}
         serverUrl={serverUrl}
@@ -49,5 +51,5 @@ export const LiveKitMeetingPanel = memo(
   (prevProps, nextProps) =>
     prevProps.token === nextProps.token &&
     prevProps.serverUrl === nextProps.serverUrl &&
-    prevProps.connect === nextProps.connect,
+    prevProps.connect === nextProps.connect
 )

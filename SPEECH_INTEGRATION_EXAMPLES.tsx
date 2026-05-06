@@ -1,16 +1,16 @@
 /**
  * Azure Speech Integration Example for Meeting Page
- * 
+ *
  * This file shows how to integrate Azure Speech-to-Text into the existing meeting page.
  * You can use this as a reference to update src/renderer/src/pages/meeting/meeting.tsx
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { useAzureSpeech } from '@/hooks/useAzureSpeech';
+import { useCallback, useEffect, useState } from 'react'
+import { useAzureSpeech } from '@/hooks/useAzureSpeech'
 
 /**
  * Example Component: Speech Recognition Overlay
- * 
+ *
  * Add this to your MeetingPage component to enable Azure Speech transcription
  */
 export function SpeechRecognitionPanel({ interviewId }: { interviewId: number }) {
@@ -18,15 +18,15 @@ export function SpeechRecognitionPanel({ interviewId }: { interviewId: number })
     interviewId,
     language: 'zh-TW',
     autoStartOnInit: false,
-    enableLocalFallback: true,
-  });
+    enableLocalFallback: true
+  })
 
-  const [serviceStatus, setServiceStatus] = useState<any>(null);
+  const [serviceStatus, setServiceStatus] = useState<any>(null)
 
   // Check service availability on mount
   useEffect(() => {
-    speech.getServiceStatus().then(setServiceStatus);
-  }, [speech]);
+    speech.getServiceStatus().then(setServiceStatus)
+  }, [speech])
 
   return (
     <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4">
@@ -44,7 +44,7 @@ export function SpeechRecognitionPanel({ interviewId }: { interviewId: number })
       {/* Service Status */}
       {serviceStatus && !serviceStatus.can_transcribe && (
         <div className="rounded bg-amber-50 p-3 text-sm text-amber-800">
-          ⚠️ Speech recognition services not available. 
+          ⚠️ Speech recognition services not available.
           {serviceStatus.primary_service === 'none' && (
             <span> Please configure Azure Speech or enable Whisper in settings.</span>
           )}
@@ -53,9 +53,7 @@ export function SpeechRecognitionPanel({ interviewId }: { interviewId: number })
 
       {/* Interim/Partial Text */}
       {speech.partialText && (
-        <p className="rounded bg-blue-50 p-2 text-sm italic text-blue-900">
-          {speech.partialText}
-        </p>
+        <p className="rounded bg-blue-50 p-2 text-sm italic text-blue-900">{speech.partialText}</p>
       )}
 
       {/* Transcript Entries */}
@@ -66,7 +64,10 @@ export function SpeechRecognitionPanel({ interviewId }: { interviewId: number })
           </p>
         ) : (
           speech.transcriptEntries.map((entry) => (
-            <div key={entry.id} className="flex justify-between gap-2 border-b border-slate-200 pb-2 text-sm">
+            <div
+              key={entry.id}
+              className="flex justify-between gap-2 border-b border-slate-200 pb-2 text-sm"
+            >
               <p className="flex-1">{entry.text}</p>
               <span className="whitespace-nowrap text-xs text-slate-500">
                 {(entry.confidence * 100).toFixed(0)}%
@@ -120,24 +121,24 @@ export function SpeechRecognitionPanel({ interviewId }: { interviewId: number })
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 /**
  * Integration into Meeting Page
- * 
+ *
  * Replace the existing speech recognition section with this enhanced version:
- * 
+ *
  * function MeetingPage() {
  *   const [interviewId] = useState(123);
- * 
+ *
  *   return (
  *     <div className="space-y-4">
  *       {- ... existing meeting UI ... -}
- *       
+ *
  *       {- Replace old speech section -}
  *       <SpeechRecognitionPanel interviewId={interviewId} />
- *       
+ *
  *       {- ... rest of meeting UI ... -}
  *     </div>
  *   );
@@ -146,67 +147,67 @@ export function SpeechRecognitionPanel({ interviewId }: { interviewId: number })
 
 /**
  * Alternative: Using Backend API for Transcription
- * 
+ *
  * If you prefer to send audio to the backend for transcription:
  */
 export function BackendTranscriptionExample({ interviewId }: { interviewId: number }) {
-  const [isRecording, setIsRecording] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false)
+  const [transcript, setTranscript] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
+        audioChunksRef.current.push(event.data)
+      }
 
       mediaRecorder.onstop = async () => {
         // Send to backend
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        const formData = new FormData();
-        formData.append('file', audioBlob, 'recording.wav');
-        formData.append('language', 'zh-TW');
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
+        const formData = new FormData()
+        formData.append('file', audioBlob, 'recording.wav')
+        formData.append('language', 'zh-TW')
 
         try {
           const response = await fetch('/api/v1/speech/transcribe', {
             method: 'POST',
-            body: formData,
-          });
+            body: formData
+          })
 
-          if (!response.ok) throw new Error('Transcription failed');
+          if (!response.ok) throw new Error('Transcription failed')
 
-          const result = await response.json();
-          setTranscript(result.text);
-          setError(null);
+          const result = await response.json()
+          setTranscript(result.text)
+          setError(null)
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Unknown error');
+          setError(err instanceof Error ? err.message : 'Unknown error')
         }
 
         // Cleanup
-        stream.getTracks().forEach((track) => track.stop());
-        audioChunksRef.current = [];
-      };
+        stream.getTracks().forEach((track) => track.stop())
+        audioChunksRef.current = []
+      }
 
-      mediaRecorder.start();
-      mediaRecorderRef.current = mediaRecorder;
-      setIsRecording(true);
+      mediaRecorder.start()
+      mediaRecorderRef.current = mediaRecorder
+      setIsRecording(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Microphone access denied');
+      setError(err instanceof Error ? err.message : 'Microphone access denied')
     }
-  };
+  }
 
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-4">
@@ -239,8 +240,8 @@ export function BackendTranscriptionExample({ interviewId }: { interviewId: numb
         </div>
       )}
     </div>
-  );
+  )
 }
 
 // Export for use in meeting page
-export default SpeechRecognitionPanel;
+export default SpeechRecognitionPanel

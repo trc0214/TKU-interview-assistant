@@ -28,7 +28,11 @@ export const resumesMock: Resume[] = [
     yearsExp: 3,
     skills: ['React', 'TypeScript', 'Testing Library', 'CSS'],
     aiSummary: '具 3 年前端經驗，專案以 React/TS 為主；對元件化與可維護性有實作經驗。',
-    matchHighlights: ['React + TypeScript 經驗符合', '具測試與元件化思維', '可補強 Tailwind/設計系統實務'],
+    matchHighlights: [
+      'React + TypeScript 經驗符合',
+      '具測試與元件化思維',
+      '可補強 Tailwind/設計系統實務'
+    ]
   },
   {
     id: 'res-002',
@@ -42,7 +46,7 @@ export const resumesMock: Resume[] = [
     yearsExp: 2,
     skills: ['Node.js', 'Express', 'PostgreSQL', 'Docker'],
     aiSummary: '具 Node.js API 開發經驗，熟悉 SQL；系統設計深度中等，需看實戰案例。',
-    matchHighlights: ['API 開發與 SQL 基礎良好', '具 Docker 實作', '系統設計需面試深入驗證'],
+    matchHighlights: ['API 開發與 SQL 基礎良好', '具 Docker 實作', '系統設計需面試深入驗證']
   },
   {
     id: 'res-003',
@@ -56,8 +60,8 @@ export const resumesMock: Resume[] = [
     yearsExp: 5,
     skills: ['React', 'TypeScript', 'Performance', 'Design System'],
     aiSummary: '具 5 年前端經驗，熟悉效能優化與設計系統落地；有跨團隊協作經驗。',
-    matchHighlights: ['設計系統與效能經驗突出', '跨團隊溝通良好', '適合擔任核心模組負責人'],
-  },
+    matchHighlights: ['設計系統與效能經驗突出', '跨團隊溝通良好', '適合擔任核心模組負責人']
+  }
 ]
 
 export function getResumeById(resumeId: string | undefined) {

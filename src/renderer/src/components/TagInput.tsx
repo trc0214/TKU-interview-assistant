@@ -4,7 +4,7 @@ export function TagInput({
   label,
   value,
   onChange,
-  placeholder,
+  placeholder
 }: {
   label: string
   value: string[]

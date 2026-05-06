@@ -8,7 +8,10 @@ import type { AIAnalysis, AIAnalysisHistory, Resume } from '../../api/types'
 
 type SortMode = 'date_desc' | 'date_asc' | 'score_desc' | 'score_asc'
 
-function sortByMode<T extends { createdAt: string; overallScore: number }>(items: T[], mode: SortMode): T[] {
+function sortByMode<T extends { createdAt: string; overallScore: number }>(
+  items: T[],
+  mode: SortMode
+): T[] {
   const sorted = [...items]
   if (mode === 'date_desc') {
     sorted.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
@@ -19,10 +22,18 @@ function sortByMode<T extends { createdAt: string; overallScore: number }>(items
     return sorted
   }
   if (mode === 'score_desc') {
-    sorted.sort((left, right) => right.overallScore - left.overallScore || Date.parse(right.createdAt) - Date.parse(left.createdAt))
+    sorted.sort(
+      (left, right) =>
+        right.overallScore - left.overallScore ||
+        Date.parse(right.createdAt) - Date.parse(left.createdAt)
+    )
     return sorted
   }
-  sorted.sort((left, right) => left.overallScore - right.overallScore || Date.parse(left.createdAt) - Date.parse(right.createdAt))
+  sorted.sort(
+    (left, right) =>
+      left.overallScore - right.overallScore ||
+      Date.parse(left.createdAt) - Date.parse(right.createdAt)
+  )
   return sorted
 }
 
@@ -57,7 +68,7 @@ export function AiAnalysisPage() {
         setAnalyses(data)
       } catch (e: any) {
         if (cancelled) return
-        setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
+        setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入失敗'))
         setAnalyses([])
       }
     }
@@ -94,7 +105,7 @@ export function AiAnalysisPage() {
         setAnalysis(created)
       } catch (e: any) {
         if (cancelled) return
-        setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
+        setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入失敗'))
         setResume(null)
         setAnalysis(null)
         setHistory([])
@@ -128,13 +139,13 @@ export function AiAnalysisPage() {
         jobId: resume.jobId,
         resumeId: resume.id,
         force: true,
-        extraConditions: extraConditions.trim() ? extraConditions.trim() : undefined,
+        extraConditions: extraConditions.trim() ? extraConditions.trim() : undefined
       })
       setAnalysis(created)
       const historyItems = await listAnalysisHistory({ resumeId: resume.id })
       setHistory(historyItems)
     } catch (e: any) {
-      setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '重新分析失敗')
+      setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '重新分析失敗'))
     } finally {
       setRebusy(false)
     }
@@ -146,7 +157,7 @@ export function AiAnalysisPage() {
       overall,
       professional: analysis?.professionalScore ?? 0,
       communication: analysis?.communicationScore ?? 0,
-      problemSolving: analysis?.problemSolvingScore ?? 0,
+      problemSolving: analysis?.problemSolvingScore ?? 0
     }
   }, [analysis])
 
@@ -161,12 +172,18 @@ export function AiAnalysisPage() {
       overallDelta: latest.overallScore - previous.overallScore,
       professionalDelta: latest.professionalScore - previous.professionalScore,
       communicationDelta: latest.communicationScore - previous.communicationScore,
-      problemSolvingDelta: latest.problemSolvingScore - previous.problemSolvingScore,
+      problemSolvingDelta: latest.problemSolvingScore - previous.problemSolvingScore
     }
   }, [history])
 
-  const sortedAnalyses = useMemo(() => sortByMode(analyses ?? [], listSortMode), [analyses, listSortMode])
-  const sortedHistory = useMemo(() => sortByMode(history, historySortMode), [history, historySortMode])
+  const sortedAnalyses = useMemo(
+    () => sortByMode(analyses ?? [], listSortMode),
+    [analyses, listSortMode]
+  )
+  const sortedHistory = useMemo(
+    () => sortByMode(history, historySortMode),
+    [history, historySortMode]
+  )
 
   function formatDelta(value: number) {
     if (value === 0) return '持平'
@@ -183,7 +200,9 @@ export function AiAnalysisPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-slate-600" htmlFor="analysis-sort-mode">排序</label>
+          <label className="text-xs font-medium text-slate-600" htmlFor="analysis-sort-mode">
+            排序
+          </label>
           <select
             id="analysis-sort-mode"
             value={listSortMode}
@@ -212,7 +231,9 @@ export function AiAnalysisPage() {
               <tbody className="divide-y divide-slate-200">
                 {sortedAnalyses.map((a) => (
                   <tr key={a.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 text-slate-700">{new Date(a.createdAt).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {new Date(a.createdAt).toLocaleString()}
+                    </td>
                     <td className="px-4 py-3 text-slate-700">{a.resumeId}</td>
                     <td className="px-4 py-3 text-slate-700">{a.jobId}</td>
                     <td className="px-4 py-3">
@@ -249,7 +270,10 @@ export function AiAnalysisPage() {
         <div className="text-sm font-medium text-slate-900">找不到履歷</div>
         <div className="mt-2 text-sm text-slate-600">{error ?? '資料不存在或尚未載入。'}</div>
         <div className="mt-4">
-          <Link to="/resumes" className="text-sm text-slate-700 hover:text-slate-900 hover:underline">
+          <Link
+            to="/resumes"
+            className="text-sm text-slate-700 hover:text-slate-900 hover:underline"
+          >
             返回履歷列表
           </Link>
         </div>
@@ -304,7 +328,9 @@ export function AiAnalysisPage() {
             placeholder="例：必須有 Docker / Kubernetes 經驗、近一年有實際帶團隊經驗、能配合每週至少 2 天到辦公室…"
             className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
           />
-          <div className="mt-2 text-xs text-slate-500">提示：若你已修改職缺內容（必要技能/加分條件/描述），也建議按一次重新分析。</div>
+          <div className="mt-2 text-xs text-slate-500">
+            提示：若你已修改職缺內容（必要技能/加分條件/描述），也建議按一次重新分析。
+          </div>
         </div>
       </div>
 
@@ -328,28 +354,36 @@ export function AiAnalysisPage() {
           <div className="text-sm font-semibold text-slate-900">專業能力</div>
           <div className="mt-4 space-y-2">
             <ProgressBar value={scores.professional} />
-            <div className="text-sm font-medium text-slate-900 tabular-nums">{scores.professional}%</div>
+            <div className="text-sm font-medium text-slate-900 tabular-nums">
+              {scores.professional}%
+            </div>
           </div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-6">
           <div className="text-sm font-semibold text-slate-900">溝通能力</div>
           <div className="mt-4 space-y-2">
             <ProgressBar value={scores.communication} />
-            <div className="text-sm font-medium text-slate-900 tabular-nums">{scores.communication}%</div>
+            <div className="text-sm font-medium text-slate-900 tabular-nums">
+              {scores.communication}%
+            </div>
           </div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-6">
           <div className="text-sm font-semibold text-slate-900">問題解決能力</div>
           <div className="mt-4 space-y-2">
             <ProgressBar value={scores.problemSolving} />
-            <div className="text-sm font-medium text-slate-900 tabular-nums">{scores.problemSolving}%</div>
+            <div className="text-sm font-medium text-slate-900 tabular-nums">
+              {scores.problemSolving}%
+            </div>
           </div>
         </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-6">
         <div className="text-sm font-semibold text-slate-900">AI 建議摘要</div>
-        <div className="mt-3 text-sm text-slate-700">{analysis?.summary ?? resume.aiSummary ?? '尚未產生摘要。'}</div>
+        <div className="mt-3 text-sm text-slate-700">
+          {analysis?.summary ?? resume.aiSummary ?? '尚未產生摘要。'}
+        </div>
 
         {analysis?.suggestedQuestions?.length ? (
           <div className="mt-6">
@@ -374,7 +408,9 @@ export function AiAnalysisPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">分析歷史比較</div>
-              <div className="mt-1 text-sm text-slate-600">顯示最新一次分析與前一次分析的差異，方便確認重新分析是否真的改變判讀。</div>
+              <div className="mt-1 text-sm text-slate-600">
+                顯示最新一次分析與前一次分析的差異，方便確認重新分析是否真的改變判讀。
+              </div>
             </div>
             <div className="text-xs text-slate-500">共 {history.length} 筆歷史</div>
           </div>
@@ -384,13 +420,21 @@ export function AiAnalysisPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div className="text-xs font-semibold text-slate-500">最新分析</div>
-                  <div className="mt-2 text-sm font-medium text-slate-900">{new Date(comparison.latest.createdAt).toLocaleString()}</div>
-                  <div className="mt-2 text-sm text-slate-700">{comparison.latest.summary || '無摘要'}</div>
+                  <div className="mt-2 text-sm font-medium text-slate-900">
+                    {new Date(comparison.latest.createdAt).toLocaleString()}
+                  </div>
+                  <div className="mt-2 text-sm text-slate-700">
+                    {comparison.latest.summary || '無摘要'}
+                  </div>
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-white p-4">
                   <div className="text-xs font-semibold text-slate-500">前一次分析</div>
-                  <div className="mt-2 text-sm font-medium text-slate-900">{new Date(comparison.previous.createdAt).toLocaleString()}</div>
-                  <div className="mt-2 text-sm text-slate-700">{comparison.previous.summary || '無摘要'}</div>
+                  <div className="mt-2 text-sm font-medium text-slate-900">
+                    {new Date(comparison.previous.createdAt).toLocaleString()}
+                  </div>
+                  <div className="mt-2 text-sm text-slate-700">
+                    {comparison.previous.summary || '無摘要'}
+                  </div>
                 </div>
               </div>
 
@@ -406,16 +450,38 @@ export function AiAnalysisPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {[
-                      ['綜合分數', comparison.latest.overallScore, comparison.previous.overallScore, comparison.overallDelta],
-                      ['專業能力', comparison.latest.professionalScore, comparison.previous.professionalScore, comparison.professionalDelta],
-                      ['溝通能力', comparison.latest.communicationScore, comparison.previous.communicationScore, comparison.communicationDelta],
-                      ['問題解決', comparison.latest.problemSolvingScore, comparison.previous.problemSolvingScore, comparison.problemSolvingDelta],
+                      [
+                        '綜合分數',
+                        comparison.latest.overallScore,
+                        comparison.previous.overallScore,
+                        comparison.overallDelta
+                      ],
+                      [
+                        '專業能力',
+                        comparison.latest.professionalScore,
+                        comparison.previous.professionalScore,
+                        comparison.professionalDelta
+                      ],
+                      [
+                        '溝通能力',
+                        comparison.latest.communicationScore,
+                        comparison.previous.communicationScore,
+                        comparison.communicationDelta
+                      ],
+                      [
+                        '問題解決',
+                        comparison.latest.problemSolvingScore,
+                        comparison.previous.problemSolvingScore,
+                        comparison.problemSolvingDelta
+                      ]
                     ].map(([label, latest, previous, delta]) => (
                       <tr key={label as string}>
                         <td className="px-4 py-3 font-medium text-slate-900">{label}</td>
                         <td className="px-4 py-3 text-slate-700">{latest}%</td>
                         <td className="px-4 py-3 text-slate-700">{previous}%</td>
-                        <td className={`px-4 py-3 font-medium ${Number(delta) > 0 ? 'text-emerald-600' : Number(delta) < 0 ? 'text-rose-600' : 'text-slate-600'}`}>
+                        <td
+                          className={`px-4 py-3 font-medium ${Number(delta) > 0 ? 'text-emerald-600' : Number(delta) < 0 ? 'text-rose-600' : 'text-slate-600'}`}
+                        >
                           {formatDelta(Number(delta))}
                         </td>
                       </tr>
@@ -425,14 +491,18 @@ export function AiAnalysisPage() {
               </div>
             </div>
           ) : (
-            <div className="mt-6 rounded-md bg-slate-50 p-4 text-sm text-slate-600">至少需要兩筆分析紀錄，才能比較新舊差異。你可以先使用上方的「重新分析」建立第二筆結果。</div>
+            <div className="mt-6 rounded-md bg-slate-50 p-4 text-sm text-slate-600">
+              至少需要兩筆分析紀錄，才能比較新舊差異。你可以先使用上方的「重新分析」建立第二筆結果。
+            </div>
           )}
         </section>
 
         <section className="rounded-lg border border-slate-200 bg-white p-6">
           <div className="text-sm font-semibold text-slate-900">歷史時間軸</div>
           <div className="mt-3 flex items-center gap-2">
-            <label className="text-xs font-medium text-slate-600" htmlFor="history-sort-mode">排序</label>
+            <label className="text-xs font-medium text-slate-600" htmlFor="history-sort-mode">
+              排序
+            </label>
             <select
               id="history-sort-mode"
               value={historySortMode}
@@ -450,15 +520,21 @@ export function AiAnalysisPage() {
               sortedHistory.map((item, index) => (
                 <div key={item.id} className="rounded-lg border border-slate-200 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-medium text-slate-900">{index === 0 ? '目前排序首筆' : `歷史紀錄 ${sortedHistory.length - index}`}</div>
+                    <div className="text-sm font-medium text-slate-900">
+                      {index === 0 ? '目前排序首筆' : `歷史紀錄 ${sortedHistory.length - index}`}
+                    </div>
                     <Badge label={`${item.overallScore}%`} tone={scoreToTone(item.overallScore)} />
                   </div>
-                  <div className="mt-2 text-xs text-slate-500">{new Date(item.createdAt).toLocaleString()}</div>
+                  <div className="mt-2 text-xs text-slate-500">
+                    {new Date(item.createdAt).toLocaleString()}
+                  </div>
                   <div className="mt-3 text-sm text-slate-700">{item.summary || '無摘要'}</div>
                 </div>
               ))
             ) : (
-              <div className="rounded-md bg-slate-50 p-4 text-sm text-slate-600">目前還沒有分析歷史。</div>
+              <div className="rounded-md bg-slate-50 p-4 text-sm text-slate-600">
+                目前還沒有分析歷史。
+              </div>
             )}
           </div>
         </section>

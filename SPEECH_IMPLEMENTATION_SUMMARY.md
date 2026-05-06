@@ -9,6 +9,7 @@ The interview assistant's speech processing workflow has been successfully refac
 ### Backend (Python/FastAPI)
 
 #### 1. **Azure Speech Service** (`backend/app/services/azure_speech.py`)
+
 - Cloud-based speech recognition via Microsoft Azure Cognitive Services
 - Supports 100+ languages with automatic language detection
 - Provides:
@@ -18,6 +19,7 @@ The interview assistant's speech processing workflow has been successfully refac
   - Error handling and graceful timeouts
 
 #### 2. **Whisper Service** (`backend/app/services/whisper.py`)
+
 - Local speech recognition using OpenAI's Whisper model
 - Runs completely offline (no API keys needed)
 - Features:
@@ -28,6 +30,7 @@ The interview assistant's speech processing workflow has been successfully refac
   - Fallback mechanism documentation
 
 #### 3. **Unified Speech Service** (`backend/app/services/unified_speech.py`)
+
 - Intelligently routes between Azure and Whisper
 - Automatic failover logic:
   - **Primary**: Azure Speech (best accuracy, requires API key)
@@ -36,6 +39,7 @@ The interview assistant's speech processing workflow has been successfully refac
 - Supports language preference override
 
 #### 4. **Speech API Routes** (`backend/app/routers/speech.py`)
+
 - `POST /api/v1/speech/transcribe` - Upload and transcribe audio files
 - `POST /api/v1/speech/transcribe-bytes` - Send raw audio bytes
 - `GET /api/v1/speech/status` - Check service availability
@@ -44,6 +48,7 @@ The interview assistant's speech processing workflow has been successfully refac
 ### Frontend (TypeScript/React)
 
 #### 1. **Azure Speech Service** (`src/renderer/src/services/azureSpeech.ts`)
+
 - Browser-based continuous speech recognition
 - Azure Speech SDK integration (loaded from CDN)
 - Features:
@@ -54,6 +59,7 @@ The interview assistant's speech processing workflow has been successfully refac
   - Session persistence
 
 #### 2. **React Hook** (`src/renderer/src/hooks/useAzureSpeech.ts`)
+
 - `useAzureSpeech()` hook for easy component integration
 - Manages:
   - Listening state and transcript entries
@@ -69,6 +75,7 @@ The interview assistant's speech processing workflow has been successfully refac
 ### Configuration
 
 #### Backend Environment (`backend/env.example`)
+
 ```
 AZURE_SPEECH_KEY=<your_azure_key>
 AZURE_SPEECH_REGION=eastasia
@@ -79,6 +86,7 @@ WHISPER_USE_FALLBACK=true
 ```
 
 #### Frontend Environment (`src/renderer/.env.example`)
+
 ```
 VITE_AZURE_SPEECH_KEY=<optional_frontend_key>
 VITE_AZURE_SPEECH_REGION=eastasia
@@ -90,10 +98,12 @@ VITE_SPEECH_DEFAULT_LANGUAGE=zh-TW
 ### Dependencies Updated
 
 **Backend** (`backend/requirements.txt`):
+
 - `cognitive-services-speech==1.37.0` - Azure Speech SDK
 - `openai-whisper==20240930` - Whisper model
 
 **Frontend**:
+
 - Azure Speech SDK via CDN (no npm package required)
 - No additional frontend package dependencies
 
@@ -106,6 +116,7 @@ VITE_SPEECH_DEFAULT_LANGUAGE=zh-TW
 ## Key Features
 
 ### 1. **Seamless Failover**
+
 ```
 User speaks → Azure (primary)
     ↓ if fails
@@ -117,31 +128,36 @@ User speaks → Azure (primary)
 ### 2. **Dual Integration Approaches**
 
 **Option A: Frontend-Direct** (Browser-based)
+
 ```tsx
-const speech = useAzureSpeech({ interviewId, language: 'zh-TW' });
-await speech.startListening();
+const speech = useAzureSpeech({ interviewId, language: 'zh-TW' })
+await speech.startListening()
 ```
 
 **Option B: Backend API** (Secure, Recommended for Production)
+
 ```tsx
 const response = await fetch('/api/v1/speech/transcribe', {
   method: 'POST',
-  body: formData  // Contains audio file
-});
+  body: formData // Contains audio file
+})
 ```
 
 ### 3. **Service Status Monitoring**
+
 ```tsx
-const status = await speech.getServiceStatus();
+const status = await speech.getServiceStatus()
 // Returns: azure_configured, whisper_enabled, primary_service, can_transcribe
 ```
 
 ### 4. **Confidence Scoring**
+
 - Each transcribed entry includes confidence (0-1 scale)
 - Can be used to filter low-confidence results
 - Exported in transcript data for audit trail
 
 ### 5. **Multi-Language Support**
+
 - Azure: Auto-detects or respects preferred language
 - Whisper: Supports auto-detection via language parameter
 - Currently configured for zh-TW (Traditional Chinese) by default
@@ -151,11 +167,13 @@ const status = await speech.getServiceStatus();
 ### From Browser SpeechRecognition to Azure Speech
 
 Current state supports browser's Web Speech API:
+
 ```tsx
-const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)()
 ```
 
 New priority chain:
+
 1. **Azure Speech** (if SDK loaded and configured)
 2. **Browser SpeechRecognition** (legacy fallback)
 3. **Backend API** (if neither above available)
@@ -163,6 +181,7 @@ New priority chain:
 ### Recommended Integration Steps
 
 1. **Deploy Backend Services**
+
    ```bash
    pip install -r backend/requirements.txt
    # Configure .env with Azure credentials
@@ -170,6 +189,7 @@ New priority chain:
    ```
 
 2. **Update Frontend Configuration**
+
    ```bash
    # Copy .env.example to .env.local
    # Add Azure credentials (optional - backend API is more secure)
@@ -188,6 +208,7 @@ New priority chain:
 ## Performance Characteristics
 
 ### Azure Speech
+
 - **Latency**: ~0.5-2 seconds per utterance
 - **Accuracy**: 85-95% for clear audio
 - **Cost**: $1 per hour
@@ -195,6 +216,7 @@ New priority chain:
 - **Model Size**: Server-side (no local storage)
 
 ### Whisper
+
 - **Latency**: 5-30 seconds per minute of audio (CPU-dependent)
 - **Accuracy**: 80-95% (varies by model)
 - **Cost**: Free
@@ -204,6 +226,7 @@ New priority chain:
 ## Security Considerations
 
 ### API Keys in Frontend (NOT RECOMMENDED)
+
 ```tsx
 // ❌ Avoid: Keys exposed to browser
 const response = await azureSpeechService.start({
@@ -213,17 +236,19 @@ const response = await azureSpeechService.start({
 ```
 
 ### Backend Proxy (RECOMMENDED)
+
 ```tsx
 // ✅ Better: Backend handles keys
-const formData = new FormData();
-formData.append('file', audioFile);
+const formData = new FormData()
+formData.append('file', audioFile)
 const result = await fetch('/api/v1/speech/transcribe', {
   method: 'POST',
   body: formData
-});
+})
 ```
 
 ### Key Management
+
 - Store Azure keys in environment variables
 - Use Azure Key Vault for production
 - Rotate keys quarterly
@@ -233,13 +258,13 @@ const result = await fetch('/api/v1/speech/transcribe', {
 
 ### Common Issues
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| "SDK not loaded" | Azure SDK script failed | Check CDN in index.html, verify CSP settings |
-| "Quota exceeded" | Azure subscription limit | Check Azure dashboard, upgrade tier, or enable Whisper |
-| "Slow transcription" | Whisper on CPU | Switch to GPU (cuda), use smaller model (tiny/base) |
-| "Microphone denied" | Permission denied | Check browser/system permissions for mic access |
-| "No speech detected" | Silent or very quiet audio | Check mic levels, test with louder audio |
+| Issue                | Cause                      | Solution                                               |
+| -------------------- | -------------------------- | ------------------------------------------------------ |
+| "SDK not loaded"     | Azure SDK script failed    | Check CDN in index.html, verify CSP settings           |
+| "Quota exceeded"     | Azure subscription limit   | Check Azure dashboard, upgrade tier, or enable Whisper |
+| "Slow transcription" | Whisper on CPU             | Switch to GPU (cuda), use smaller model (tiny/base)    |
+| "Microphone denied"  | Permission denied          | Check browser/system permissions for mic access        |
+| "No speech detected" | Silent or very quiet audio | Check mic levels, test with louder audio               |
 
 ### Verification Checklist
 
@@ -249,11 +274,12 @@ const result = await fetch('/api/v1/speech/transcribe', {
 - [ ] Azure credentials configured (if using Azure)
 - [ ] Whisper model downloaded (if using Whisper)
 - [ ] Frontend index.html includes Azure Speech SDK script
-- [ ] CSP headers allow Azure domains (*.tts.speech.microsoft.com)
+- [ ] CSP headers allow Azure domains (\*.tts.speech.microsoft.com)
 
 ## Files Created/Modified
 
 ### New Files
+
 - `backend/app/services/azure_speech.py`
 - `backend/app/services/whisper.py`
 - `backend/app/services/unified_speech.py`
@@ -265,6 +291,7 @@ const result = await fetch('/api/v1/speech/transcribe', {
 - `SPEECH_INTEGRATION_EXAMPLES.tsx`
 
 ### Modified Files
+
 - `backend/app/core/config.py` - Added Azure/Whisper configuration
 - `backend/env.example` - Added speech-related env variables
 - `backend/requirements.txt` - Added cognitive-services-speech, openai-whisper
@@ -274,23 +301,27 @@ const result = await fetch('/api/v1/speech/transcribe', {
 ## Next Steps
 
 ### Immediate
+
 1. Configure Azure Speech credentials in backend/.env
 2. Restart backend server
 3. Test `/api/v1/speech/status` endpoint
 4. Verify Whisper model downloads on first use
 
 ### Short-term
+
 1. Integrate `useAzureSpeech` hook into meeting page
 2. Test transcription with team
 3. Gather feedback on accuracy and latency
 
 ### Medium-term
+
 1. Implement transcript persistence to database
 2. Add transcript search and filtering
 3. Create analytics dashboard for transcription quality
 4. Consider GPU deployment for Whisper (if using)
 
 ### Long-term
+
 1. Fine-tune Whisper model for domain-specific terms (interview Q&A)
 2. Implement speaker diarization (who said what)
 3. Extract entities (candidate skills, requirements met)
@@ -306,6 +337,7 @@ const result = await fetch('/api/v1/speech/transcribe', {
 ## Support
 
 For questions or issues:
+
 1. Check `SPEECH_INTEGRATION_GUIDE.md` for detailed setup
 2. Review `SPEECH_INTEGRATION_EXAMPLES.tsx` for code examples
 3. Check server logs: `backend/app/main.py` should log service status

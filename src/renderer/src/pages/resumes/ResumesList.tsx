@@ -20,7 +20,7 @@ export function ResumesListPage() {
         setResumes(data)
       } catch (e: any) {
         if (cancelled) return
-        setError(e?.detail ? JSON.stringify(e.detail) : e?.message ?? '載入失敗')
+        setError(e?.detail ? JSON.stringify(e.detail) : (e?.message ?? '載入失敗'))
         setResumes([])
       }
     }
@@ -70,7 +70,13 @@ export function ResumesListPage() {
                   <td className="px-4 py-3">
                     <Badge
                       label={formatResumeStatus(r.status)}
-                      tone={r.status === 'received' ? 'info' : r.status === 'analyzed' ? 'warning' : 'success'}
+                      tone={
+                        r.status === 'received'
+                          ? 'info'
+                          : r.status === 'analyzed'
+                            ? 'warning'
+                            : 'success'
+                      }
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -78,7 +84,9 @@ export function ResumesListPage() {
                       <div className="w-32">
                         <ProgressBar value={r.aiMatchScore ?? 0} />
                       </div>
-                      <div className="tabular-nums text-sm font-medium text-slate-900">{r.aiMatchScore ?? 0}%</div>
+                      <div className="tabular-nums text-sm font-medium text-slate-900">
+                        {r.aiMatchScore ?? 0}%
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-slate-700">{formatDate(r.submittedAt)}</td>

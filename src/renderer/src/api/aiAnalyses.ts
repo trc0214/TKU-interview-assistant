@@ -1,7 +1,10 @@
 import { request } from './http'
 import type { AIAnalysis, AIAnalysisHistory, InterviewInsight } from './types'
 
-export function listAnalyses(params?: { jobId?: number; resumeId?: number }): Promise<AIAnalysis[]> {
+export function listAnalyses(params?: {
+  jobId?: number
+  resumeId?: number
+}): Promise<AIAnalysis[]> {
   const parts: string[] = []
   if (params?.jobId) parts.push(`job_id=${encodeURIComponent(params.jobId)}`)
   if (params?.resumeId) parts.push(`resume_id=${encodeURIComponent(params.resumeId)}`)
@@ -32,10 +35,16 @@ export function inferInterviewInsights(data: {
   recruiterQuestion?: string
   context?: Record<string, unknown>
 }): Promise<InterviewInsight> {
-  return request<InterviewInsight>('/ai-analyses/interview-insights', { method: 'POST', body: data })
+  return request<InterviewInsight>('/ai-analyses/interview-insights', {
+    method: 'POST',
+    body: data
+  })
 }
 
-export function listAnalysisHistory(params?: { jobId?: number; resumeId?: number }): Promise<AIAnalysisHistory[]> {
+export function listAnalysisHistory(params?: {
+  jobId?: number
+  resumeId?: number
+}): Promise<AIAnalysisHistory[]> {
   const parts: string[] = []
   if (params?.jobId) parts.push(`job_id=${encodeURIComponent(params.jobId)}`)
   if (params?.resumeId) parts.push(`resume_id=${encodeURIComponent(params.resumeId)}`)

@@ -13,8 +13,8 @@ export default defineConfig(
       '**/out',
       '**/.venv/**',
       'backend/.venv/**',
-      'SPEECH_INTEGRATION_EXAMPLES.tsx',
-    ],
+      'SPEECH_INTEGRATION_EXAMPLES.tsx'
+    ]
   },
   tseslint.configs.recommended,
   eslintPluginReact.configs.flat.recommended,

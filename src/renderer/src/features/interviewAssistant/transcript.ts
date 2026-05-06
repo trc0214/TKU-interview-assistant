@@ -144,7 +144,7 @@ export function buildInterviewNotes(
     const validEntries = entries
       .map((entry) => ({
         ...entry,
-        text: sanitizeTranscriptText(entry.text),
+        text: sanitizeTranscriptText(entry.text)
       }))
       .filter((entry) => Boolean(entry.text))
 

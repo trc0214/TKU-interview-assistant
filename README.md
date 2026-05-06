@@ -11,11 +11,13 @@ Electron + React + FastAPI system for interview operations, speech-to-text, and 
 ## Core architecture
 
 ### Frontend
+
 - Electron shell + React pages under `src/renderer/src/pages`
 - Interview assistant state and transcript pipeline under `src/renderer/src/features/interviewAssistant`
 - Meeting page under `src/renderer/src/pages/meeting/meeting.tsx`
 
 ### Backend
+
 - API routes under `backend/app/routers`
 - AI and speech services under `backend/app/services`
 - Main interview-assistant flow:
@@ -112,6 +114,7 @@ npm run typecheck
 Script: `backend/scripts/benchmark_azure_stt.py`
 
 What it tests:
+
 - `speech_recognition_language`
 - profanity filtering options
 - `SpeechServiceConnection_InitialSilenceTimeoutMs`
@@ -133,6 +136,7 @@ backend/.venv/Scripts/python backend/scripts/benchmark_azure_stt.py ^
 ```
 
 Interpretation guidance:
+
 - If cancellations/no-match cluster around short timeout values, increase initial silence timeout.
 - If technical keywords are repeatedly mistranscribed, enable phrase list and evaluate Custom Speech endpoint.
 - Prefer continuous mode for long candidate answers; use single utterance for short-turn Q&A.
@@ -167,6 +171,7 @@ package.json
 ## Cleanup recommendations
 
 ### Delete or archive (likely redundant/non-essential)
+
 - `SPEECH_IMPLEMENTATION_SUMMARY.md`
 - `SPEECH_INTEGRATION_GUIDE.md`
 - `SPEECH_QUICK_REFERENCE.md`
@@ -175,10 +180,12 @@ package.json
 Reason: Speech guidance is now consolidated into this README and service code.
 
 ### Keep but review for archival
+
 - `class-capsule-v3/` (keep only if actively used in demos; otherwise move to `docs/archive/`)
 - `backend/README.md` (can be replaced with a one-line pointer to root README)
 
 ### Ensure ignored in git
+
 - `.venv/` (root virtualenv)
 - `backend/.venv/`
 - `azure_stt_benchmark_report*.json`

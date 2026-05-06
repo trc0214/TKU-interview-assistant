@@ -65,7 +65,9 @@ export function LoginPage() {
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-10">
         <div className="rounded-2xl border border-white/10 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
           <div className="text-center">
-            <div className="text-xl font-semibold text-white">{mode === 'login' ? '登入' : '註冊'}</div>
+            <div className="text-xl font-semibold text-white">
+              {mode === 'login' ? '登入' : '註冊'}
+            </div>
             <div className="mt-1 text-sm text-white/70">
               {mode === 'login' ? '輸入帳號密碼登入系統' : '建立新帳號以登入系統'}
             </div>
@@ -112,7 +114,13 @@ export function LoginPage() {
                   : 'bg-purple-600 hover:bg-purple-700')
               }
             >
-              {mode === 'login' ? (loading ? '登入中…' : 'Login') : loading ? '註冊中…' : 'Register'}
+              {mode === 'login'
+                ? loading
+                  ? '登入中…'
+                  : 'Login'
+                : loading
+                  ? '註冊中…'
+                  : 'Register'}
             </button>
 
             <div className="text-center text-sm text-white/70">
