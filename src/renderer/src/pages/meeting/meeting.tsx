@@ -147,6 +147,7 @@ export function MeetingPage(): ReactElement {
   const syncingRef = useRef(false)
   const manualLeaveRef = useRef(false)
   const endingSessionRef = useRef(false)
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -319,6 +320,13 @@ export function MeetingPage(): ReactElement {
       window.clearInterval(intervalId)
     }
   }, [assistantSession?.id, interviewId, pushAssistantSync])
+
+  useEffect(() => {
+    const container = transcriptScrollRef.current
+    if (!container) return
+
+    container.scrollTop = container.scrollHeight
+  }, [assistant.partialText, assistant.transcriptEntries])
 
   async function handleJoinMeeting(): Promise<void> {
     try {
@@ -812,7 +820,30 @@ export function MeetingPage(): ReactElement {
               <div className="text-[11px] text-slate-500">{lang.youStatus}</div>
             </div>
             <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-800">
-              {lang.youTalking}
+              {assistant.transcriptEntries.length || assistant.partialText ? (
+                <div className="space-y-2">
+                  {assistant.partialText ? (
+                    <div className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700">
+                      {assistant.partialText}
+                    </div>
+                  ) : null}
+
+                  {assistant.transcriptEntries.length ? (
+                    <div ref={transcriptScrollRef} className="max-h-40 space-y-1 overflow-auto">
+                      {assistant.transcriptEntries.slice(-8).map((entry) => (
+                        <p
+                          key={entry.id}
+                          className="rounded-md bg-slate-50 px-2 py-1.5 text-sm text-slate-800"
+                        >
+                          {entry.text}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                lang.youTalking
+              )}
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
