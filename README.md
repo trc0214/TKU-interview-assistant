@@ -1,238 +1,142 @@
-# TKU Interview Assistant v2
+# TKU Interview Assistant
 
-An intelligent interview preparation and analysis tool powered by AI. This application helps users prepare for interviews, analyze job descriptions, manage resumes, and get AI-powered feedback on their interview performance.
+An intelligent interview preparation and analysis tool powered by AI. The application supports interview-session management, job-description analysis, resume management, AI-assisted feedback, dashboard views, and authentication.
 
-## 🎯 Features
-
-- **Interview Management**: Create, track, and analyze interview sessions
-- **Job Analysis**: Upload and analyze job descriptions
-- **Resume Management**: Store and manage multiple resumes
-- **AI Analysis**: Get AI-powered insights on interview performance and job fit
-- **Dashboard**: Overview of all your preparation progress
-- **Authentication**: Secure user authentication and session management
-
-## 🛠️ Tech Stack
+## Tech stack
 
 ### Frontend
-- **React 18** with TypeScript
-- **Vite** for fast build and HMR
-- **Tailwind CSS** for styling
-- **Electron** for desktop application
-- **React Router** for navigation
+- React with TypeScript
+- Vite
+- Tailwind CSS
+- Electron
+- React Router
 
 ### Backend
-- **FastAPI** (Python) for REST API
-- **SQLAlchemy** for ORM
-- **Google Gemini AI** for analysis
-- **SQLite** for database
+- FastAPI (Python)
+- SQLAlchemy
+- Google Gemini AI
+- SQLite
 
-## 📁 Project Structure
+## Project structure
 
-```
-├── src/                       # Frontend source code
+```text
+├── src/
 │   ├── main/                 # Electron main process
 │   ├── preload/              # Electron preload scripts
 │   └── renderer/             # React application
-│       ├── src/
-│       │   ├── components/   # Reusable React components
-│       │   ├── pages/        # Page components
-│       │   ├── api/          # API client functions
-│       │   ├── auth/         # Authentication context and helpers
-│       │   └── utils/        # Utility functions
-│       └── index.html
-├── backend/                   # Backend source code
+├── backend/
 │   └── app/
-│       ├── main.py          # FastAPI application entry point
-│       ├── models.py        # SQLAlchemy models
-│       ├── schemas.py       # Pydantic schemas
-│       ├── crud.py          # Database operations
-│       ├── routers/         # API route handlers
-│       ├── services/        # Business logic (Gemini AI, etc.)
-│       └── core/            # Configuration and security
-├── package.json             # Frontend dependencies
-├── tsconfig.json            # TypeScript configuration
-├── electron-builder.yml     # Electron build configuration
-└── README.md               # This file
+│       ├── main.py           # FastAPI entry point
+│       ├── models.py
+│       ├── schemas.py
+│       ├── crud.py
+│       ├── routers/
+│       ├── services/
+│       └── core/
+├── package.json
+├── tsconfig.json
+├── electron-builder.yml
+├── AGENTS.md
+└── README.md
 ```
 
-## 🚀 Getting Started
+## Prerequisites
 
-### Prerequisites
+- Node.js and npm
+- Python 3.8+
+- pip
+- Google Gemini API key for AI analysis features
 
-- **Node.js** (v16 or higher)
-- **npm** or **yarn**
-- **Python** 3.8+
-- **pip**
-- **Google Gemini API Key** (get one at [https://aistudio.google.com/](https://aistudio.google.com/))
+## Installation
 
-### Installation
-
-#### 1. Clone the Repository
+Clone the current repository:
 
 ```bash
-git clone https://github.com/trc0214/TKU-InterviewAssistant-v2.git
-cd TKU-InterviewAssistant-v2
+git clone https://github.com/trc0214/TKU-interview-assistant.git
+cd TKU-interview-assistant
 ```
 
-#### 2. Frontend Setup
+Frontend setup:
 
 ```bash
-# Install dependencies
 npm install
-
-# Copy environment file and update with your settings
 cp .env.example .env.local
 ```
 
-#### 3. Backend Setup
+Backend setup:
 
 ```bash
 cd backend
-
-# Create a virtual environment
 python -m venv venv
 
-# Activate virtual environment
-# On Windows:
+# Windows
 venv\Scripts\activate
-# On macOS/Linux:
+
+# macOS/Linux
 source venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
-
-# Create .env file with your configuration
 cp env.example .env
 ```
 
-Update `backend/.env` with your settings:
-```
+Example backend configuration:
+
+```env
 DATABASE_URL=sqlite:///./app.db
 GOOGLE_API_KEY=your_gemini_api_key_here
 SECRET_KEY=your_secret_key_here
 ```
 
-## 🏃 Running the Application
+Do not commit local environment files, secrets, virtual environments, runtime SQLite databases, Python caches, or build output.
 
-### Development Mode
+## Running the application
 
-#### Terminal 1 - Backend API
+Backend API:
 
 ```bash
 cd backend
-source venv/bin/activate  # or venv\Scripts\activate on Windows
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The API will be available at `http://localhost:8000`
+The development API is available at `http://localhost:8000`, with Swagger UI at `/docs` and ReDoc at `/redoc`.
 
-#### Terminal 2 - Frontend Development
+Frontend development:
 
 ```bash
 npm run dev
 ```
 
-The application will open at `http://localhost:5173`
+Production builds use the scripts defined in `package.json`, including the Electron platform build commands when available.
 
-### Building for Production
+## Development
 
-#### Build Frontend
+- Keep frontend changes within the React/TypeScript/Electron boundary and backend changes within the FastAPI/SQLAlchemy boundary unless a cross-layer change is intentional.
+- Keep tests version-controlled; test files are source artifacts, not generated output.
+- Use Conventional Commits where practical.
+- Keep PRs single-purpose and document validation performed.
+- See [`AGENTS.md`](AGENTS.md) for repository-specific branch, verification, secret-handling, issue, PR, and AI-handoff rules.
 
-```bash
-npm run build
-```
+## Troubleshooting
 
-#### Build Electron App
+### Backend connection issues
+- Ensure the FastAPI backend is running on the configured port.
+- Verify `backend/.env` exists locally and contains the expected configuration.
+- Verify the Gemini API key when AI analysis calls fail.
 
-```bash
-npm run build:win    # Windows
-npm run build:mac    # macOS
-npm run build:linux  # Linux
-```
+### Frontend build issues
+- Reinstall dependencies if local `node_modules` state is inconsistent.
+- Clear generated Vite/build output before rebuilding when necessary.
 
-## 📚 API Documentation
+### Database issues
+- `backend/app.db` is local runtime state and is ignored by Git.
+- Resetting a local database is destructive; only delete it when local data can be recreated safely.
 
-Once the backend is running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+## License
 
-## 🤝 Contributing
+No software license has been selected for this repository at this time. Repository visibility does not by itself grant permission to copy, modify, or redistribute the code. Add a `LICENSE` file only after the maintainer makes an explicit licensing decision.
 
-We welcome contributions! Here's how you can help:
+## Maintainer
 
-### 1. Fork and Clone
-```bash
-git clone https://github.com/YOUR_USERNAME/TKU-InterviewAssistant-v2.git
-cd TKU-InterviewAssistant-v2
-```
+Project lead: [@trc0214](https://github.com/trc0214)
 
-### 2. Create a Feature Branch
-```bash
-git checkout -b feature/your-feature-name
-```
-
-### 3. Make Your Changes
-- Follow the existing code style
-- Add comments for complex logic
-- Test your changes locally
-
-### 4. Commit Your Changes
-```bash
-git commit -m "feat: add your feature description"
-```
-
-Use conventional commit messages:
-- `feat:` for new features
-- `fix:` for bug fixes
-- `docs:` for documentation
-- `style:` for code style changes
-- `refactor:` for code refactoring
-- `test:` for test additions
-- `chore:` for maintenance tasks
-
-### 5. Push and Create a Pull Request
-```bash
-git push origin feature/your-feature-name
-```
-
-Then create a pull request on GitHub.
-
-## 📖 Development Guidelines
-
-- **Frontend**: Use functional components with hooks, TypeScript for type safety
-- **Backend**: Follow PEP 8, use type hints, write docstrings
-- **Database**: Keep migrations organized, use SQLAlchemy ORM
-- **Git**: Commit frequently with clear messages
-
-## 🐛 Troubleshooting
-
-### Backend Connection Issues
-- Ensure the backend is running on `http://localhost:8000`
-- Check `backend/.env` has correct configuration
-- Verify GOOGLE_API_KEY is set correctly
-
-### Frontend Build Issues
-- Delete `node_modules` and `package-lock.json`, then run `npm install`
-- Clear Vite cache: `rm -rf dist` and retry
-
-### Database Issues
-- Reset database: Delete `backend/app.db` and restart the backend
-- Run migrations if applicable
-
-## 📝 License
-
-This project is open source. Please check the LICENSE file for details.
-
-## 👥 Maintainers
-
-- **Project Lead**: [@trc0214](https://github.com/trc0214)
-
-## 📧 Contact & Support
-
-For questions, suggestions, or issues:
-- Open an [Issue](https://github.com/trc0214/TKU-InterviewAssistant-v2/issues)
-- Submit a [Pull Request](https://github.com/trc0214/TKU-InterviewAssistant-v2/pulls)
-
----
-
-**Happy Interviewing! 🎤✨**
+For project discussion, use the current repository's GitHub Issues and Pull Requests.
