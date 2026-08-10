@@ -1,5 +1,5 @@
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,15 +7,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Frontend / Electron
+node_modules/
+dist/
+dist-ssr/
 *.local
 
-# Editor directories and files
+# Editor / OS
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
@@ -23,11 +24,14 @@ dist-ssr
 *.sln
 *.sw?
 
-# Env files
+# Environment files
 .env
 .env.*
+!.env.example
 backend/.env
 backend/.env.*
+!backend/env.example
+
 # Python
 __pycache__/
 *.py[cod]
@@ -36,7 +40,6 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -54,18 +57,17 @@ share/python-wheels/
 MANIFEST
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 
 # Virtual environments
 venv/
 env/
 ENV/
-.venv
-
-# Backend specific
+.venv/
 backend/venv/
-backend/dist/
 
-# Testing
-test.py
-*.test.py
+# Runtime databases / packaged output
+backend/*.db
+backend/**/*.db
+backend/dist/
