@@ -30,5 +30,10 @@ Run the relevant checks for changed components. At minimum, build the frontend f
 ## Commits and PRs
 Use Conventional Commits where practical. Issues represent problems/goals; PRs represent implementation. AI-led checkpoints should report work state and verification. Do not use closing keywords until acceptance criteria are satisfied.
 
+## Issue attribution
+- Standard Bug/Implementation Issue Forms require `Drafted By` for the actual human or AI agent/model that produced the initial Issue content. Preserve it as immutable provenance; do not overwrite it during handoff, revision, or implementation.
+- If another AI materially changes Issue-defining content such as scope, acceptance criteria, reproduction, impact, or dependencies, add one concise Issue comment beginning with `AI-Contributor: <agent/model>` and `Role: Planning`, `Role: Revision`, or `Role: Synthesis`. Routine wording edits do not require attribution.
+- GitHub account identity records the operator account and must not be used to infer the actual AI contributor when explicit attribution exists.
+
 ## Handoff
 Provide Goal, Current Branch, Completed, Remaining, Files Changed, Verification, Known Issues/Risks, and Recommended Next Step.
