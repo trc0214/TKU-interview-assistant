@@ -32,6 +32,7 @@ Use Conventional Commits where practical. Issues represent problems/goals; PRs r
 
 ## Issue attribution
 - Standard Bug/Implementation Issue Forms require `Drafted By` for the actual human or AI agent/model that produced the initial Issue content. Preserve it as immutable provenance; do not overwrite it during handoff, revision, or implementation.
+- If an Issue is created through Blank issue, GitHub CLI, API, or automation without the standard Issue Form, put `Drafted By: <human-or-agent/model>` at the top of the Issue body before creation. Do not create an Issue without initial attribution.
 - If another AI materially changes Issue-defining content such as scope, acceptance criteria, reproduction, impact, or dependencies, add one concise Issue comment beginning with `AI-Contributor: <agent/model>` and `Role: Planning`, `Role: Revision`, or `Role: Synthesis`. Routine wording edits do not require attribution.
 - GitHub account identity records the operator account and must not be used to infer the actual AI contributor when explicit attribution exists.
 
